@@ -1,0 +1,7 @@
+function (check_environment_variable _var)
+    if(DEFINED ENV{${_var}})
+        set(${_var} $ENV{${_var}} PARENT_SCOPE)
+    elseif(NOT DEFINED ${_var})
+        message(SEND_ERROR "${_var} environment variable is not set.")
+    endif()
+endfunction()

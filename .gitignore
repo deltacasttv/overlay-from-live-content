@@ -1,32 +1,39 @@
-# Prerequisites
-*.d
+.idea/
+.vs/
+.vscode/
+.devcontainer/
 
-# Compiled Object files
-*.slo
-*.lo
+x64/
+Win32/
+Debug/
+Release/
+Debug_Static/
+Release_Static/
+objfre_wlh_amd64/
+objchk_wlh_amd64/
+build*/
+
 *.o
-*.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
+*.vcxproj.user
+_inc_*
+*.bin
 *.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
-*.a
+*.exp
+*.ilk
 *.lib
-
-# Executables
+*.pdb
+*.bkp
+*.log
 *.exe
 *.out
-*.app
+*.tlog
+*.idb
+*.obj
+*.pmc
+
+Debug/
+Release/
+Debug_Static/
+Release_Static/
+
+version.h
