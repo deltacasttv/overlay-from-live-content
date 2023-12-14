@@ -3,6 +3,10 @@
 ## Fixed
 
 - Compilation on Windows
+- Documentation:
+  - Missing information about VideoMaster SDK environment variables
+  - Minimum latency should be 2 and not 3
+  - Some typos
 
 
 # 1.0.0
