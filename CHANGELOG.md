@@ -1,6 +1,14 @@
+# Unreleased
+
+## Fixed
+
+- Compilation on Windows
+
+
 # 1.0.0
 
 ## Added
+
 - Application that is capable of
   - Receiving video from an input
   - Generating some content from that input
