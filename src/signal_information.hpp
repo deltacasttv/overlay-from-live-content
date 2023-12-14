@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "VideoMasterHD_Core.h"
 #include "VideoMasterHD_Sdi.h"
 
