@@ -1,8 +1,8 @@
 # Overlay From Live Content
 
-The application demonstrates an overlay use case built on any keyer-enable DELTACAST.TV device where the overlay is computed from the live content fed on one of its input connector.
+The application demonstrates an overlay use case built on any keyer-enable DELTACAST device where the overlay is computed from the live content fed on one of its input connectors.
 
-An SDI and keyer-enable device is currently the only valid type of devices for this application.
+An SDI and keyer-enable device is currently the only valid type of device for this application.
 
 The actual processing that is implemented in the demo application is quite straightforward.
 In this case, it consists in overlaying the bottom half of the input frame onto the live content so that the top half is the live content while the bottom half is delayed by the processing.
