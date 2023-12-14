@@ -157,7 +157,10 @@ std::unique_ptr<Deltacast::Device> Deltacast::Device::create(int device_index)
 
 bool Deltacast::Device::suitable()
 {
-    return true;
+    ULONG number_of_on_board_keyers = 0;
+    VHD_GetBoardCapability(*handle(), VHD_KEYER_BOARD_CAP_KEYER, &number_of_on_board_keyers);
+
+    return (number_of_on_board_keyers > 0);
 }
 
 bool Deltacast::Device::set_loopback_state(int index, bool enabled)
