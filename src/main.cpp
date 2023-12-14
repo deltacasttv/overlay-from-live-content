@@ -77,7 +77,7 @@ int main(int argc, char** argv)
     CLI::App app{"Generates some content from input and sends it to output"};
     app.add_option("-d,--device", device_id, "ID of the device to use");
     app.add_option("-i,--input", rx_stream_id, "ID of the input connector to use");
-    app.add_option("-o,--output", tx_stream_id, "ID of the input connector to use");
+    app.add_option("-o,--output", tx_stream_id, "ID of the output connector to use");
     app.add_flag("--overlay,!--no-overlay", overlay_enabled, "Activates overlay on the output stream");
     app.add_flag("--renderer,!--no-renderer", renderer_enabled, "Activates rendering of the live input stream");
     CLI11_PARSE(app, argc, argv);

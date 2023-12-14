@@ -65,7 +65,7 @@ Loop back to point `1`
 
 # Minimal Latency
 
-The minimal latency between input and output is 3 frames.
+The minimal latency between input and output is 2 frames (should the processing be fast enough, see section `Details on the frame-based video interfacing` of https://www.deltacast.tv/technologies/low-latency).
 In order to guarantee that in all cases, the following strategies have been implemented:
 
 ## RX
