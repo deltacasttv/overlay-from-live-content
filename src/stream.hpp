@@ -46,7 +46,7 @@ namespace Deltacast
         int _channel_index;
         std::string _name;
 
-        static const uint32_t _buffer_queue_depth = 2;
+        static const uint32_t _buffer_queue_depth = 16;
         static const uint32_t _slot_timeout_ms = 100;
 
         using ApiPopSlot = std::function<ULONG(HANDLE stream_handle, HANDLE* slot_handle, ULONG timeout_ms)>;

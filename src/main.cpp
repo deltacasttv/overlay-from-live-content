@@ -73,6 +73,7 @@ int main(int argc, char** argv)
     int tx_stream_id = 0;
     bool overlay_enabled = false;
     bool renderer_enabled = false;
+    shared_resources.maximum_latency = 2;
 
     CLI::App app{"Generates some content from input and sends it to output"};
     app.add_option("-d,--device", device_id, "ID of the device to use");
@@ -80,6 +81,7 @@ int main(int argc, char** argv)
     app.add_option("-o,--output", tx_stream_id, "ID of the output connector to use");
     app.add_flag("--overlay,!--no-overlay", overlay_enabled, "Activates overlay on the output stream");
     app.add_flag("--renderer,!--no-renderer", renderer_enabled, "Activates rendering of the live input stream");
+    app.add_option("-l,--maximum-latency", shared_resources.maximum_latency, "Maximum desired latency in frames between input and output");
     CLI11_PARSE(app, argc, argv);
 
     signal(SIGINT, on_close);

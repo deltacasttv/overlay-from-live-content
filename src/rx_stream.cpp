@@ -56,7 +56,7 @@ bool Deltacast::RxStream::configure(SignalInformation signal_info, bool /*overla
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_VIDEO_STANDARD, signal_info.video_standard))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_INTERFACE, signal_info.interface))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFER_PACKING, VHD_BUFPACK_VIDEO_RGB_24))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, 2)))
+        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, _buffer_queue_depth)))
     {
         std::cout << "ERROR for " << _name << ": Cannot configure stream (" << api_success << ")" << std::endl;
         return false;
@@ -82,15 +82,15 @@ bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
     do
     {
         push_slot(slot_handle);
-        VHD_GetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_FILLING, &filling);
 
         auto [ _handle, api_success ] = pop_slot();
         if (!api_success && api_success.error_code() == VHDERR_TIMEOUT)
             return true;
         else if (!api_success)
             return false;
-        
         slot_handle = _handle;
+
+        VHD_GetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_FILLING, &filling);
     } while (filling > 0);
 
     // Wraps the slot handle so that it is pushed back to the queue when it goes out of scope

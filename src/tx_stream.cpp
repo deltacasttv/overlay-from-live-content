@@ -57,7 +57,7 @@ bool Deltacast::TxStream::configure(SignalInformation signal_info, bool overlay_
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_INTERFACE, signal_info.interface))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_TX_GENLOCK, TRUE))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFER_PACKING, (overlay_enabled ? VHD_BUFPACK_VIDEO_RGBA_32 : VHD_BUFPACK_VIDEO_RGB_24)))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, 2))
+        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, _buffer_queue_depth))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_PRELOAD, 0)))
     {
         std::cout << "ERROR for " << _name << ": Cannot configure stream (" << api_success << ")" << std::endl;
@@ -89,17 +89,21 @@ bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
     if (_should_stop)
         return false;
 
-    ULONG on_board_filling = 0;
-    if (!(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_ONBOARDBUFFER_FILLING, &on_board_filling)))
+    ULONG on_board_filling = 0, buffer_queue_filling = 0;
+    if (!(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_ONBOARDBUFFER_FILLING, &on_board_filling))
+        || !(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_FILLING, &buffer_queue_filling)))
     {
         std::cout << "ERROR for " << _name << ": Cannot get stream property (" << api_success << ")" << std::endl;
         return false;
     }
 
-    for (auto i = 1; i < on_board_filling; ++i)
+    if (buffer_queue_filling > (shared_resources.maximum_latency - 2))
     {
-        shared_resources.synchronization.notify_processing_finished();
-        while (!_should_stop && !shared_resources.synchronization.wait_until_ready_to_process()) {}
+        for (auto i = 0; i < buffer_queue_filling - (shared_resources.maximum_latency - 2); ++i)
+        {
+            shared_resources.synchronization.notify_processing_finished();
+            while (!_should_stop && !shared_resources.synchronization.wait_until_ready_to_process()) {}
+        }
     }
 
     UBYTE* buffer = nullptr;
