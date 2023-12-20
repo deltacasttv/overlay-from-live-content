@@ -105,3 +105,6 @@ transfer_time_device_to_host = 14 ms
 period_of_the_signal = 16.67 ms
 ```
 leads to a latency of 4 frames, since `1 + ((9 + 12 + 14) / 16.67)=3.1`, rounded up and giving `4`.
+
+Due to the nature of the synchronisation between the RX and TX threads, a latency of more than 4 frames is impossible to achieve.
+We would need to parallelize the processing of the buffers which is something currently not supported.
