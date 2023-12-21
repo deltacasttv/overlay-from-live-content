@@ -25,6 +25,7 @@
 #include "VideoMasterHD_Core.h"
 
 #include "signal_information.hpp"
+#include "rx_renderer.hpp"
 
 namespace Deltacast
 {
@@ -58,6 +59,7 @@ namespace Deltacast
         } synchronization;
 
         SignalInformation signal_info;
+        std::optional<RxRenderer> rx_renderer;
 
         unsigned int maximum_latency;
 

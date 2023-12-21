@@ -131,13 +131,13 @@ int main(int argc, char** argv)
         std::cout << std::endl;
 
         auto window_refresh_interval = 10ms;
-        RxRenderer renderer("Live Content", decoded_signal_info.width / 2, decoded_signal_info.height / 2, window_refresh_interval.count());
         if (renderer_enabled)
         {
+            shared_resources.rx_renderer.emplace("Live Content", decoded_signal_info.width / 2, decoded_signal_info.height / 2, window_refresh_interval.count());
             std::cout << "Initializing live content rendering window" << std::endl;
-            if (!renderer.init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
+            if (!shared_resources.rx_renderer.value().init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
                 return -1;
-    
+
             std::cout << std::endl;
         }
 
@@ -191,10 +191,10 @@ int main(int argc, char** argv)
     
         std::cout << std::endl;
 
-        if (renderer_enabled)
+        if (shared_resources.rx_renderer.has_value())
         {
             std::cout << "Starting live content rendering" << std::endl;
-            renderer.start(shared_resources);
+            shared_resources.rx_renderer.value().start();
     
             std::cout << std::endl;
         }
@@ -204,12 +204,12 @@ int main(int argc, char** argv)
     
         std::cout << std::endl;
 
-        if (renderer_enabled)
+        if (shared_resources.rx_renderer.has_value())
         {
             std::cout << "Stopping live content rendering" << std::endl;
-            renderer.stop();
+            shared_resources.rx_renderer.value().stop();
     
-        std::cout << std::endl;
+            std::cout << std::endl;
         }
 
         std::cout << "Enabling loopback" << std::endl;
