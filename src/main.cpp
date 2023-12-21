@@ -161,27 +161,27 @@ int main(int argc, char** argv)
 
         std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
         auto rx_stream = Deltacast::RxStream::create(*device, rx_stream_id
-                                                    , allocate_buffer, deallocate_buffer);
+                                                    , allocate_buffer, deallocate_buffer
+                                                    , (overlay_enabled ? generate_overlay : generate_frame));
         if (!rx_stream)
             return -1;
 
         std::cout << "Opening TX stream " << tx_stream_id << "" << std::endl;
         auto tx_stream = Deltacast::TxStream::create(*device, tx_stream_id
-                                                    , allocate_buffer, deallocate_buffer
-                                                    , (overlay_enabled ? generate_overlay : generate_frame));
+                                                    , allocate_buffer, deallocate_buffer);
         if (!tx_stream)
-            return -1;
-                    
-        std::cout << "Configuring and starting RX stream" << std::endl;
-        if (!rx_stream->configure(shared_resources.signal_info, overlay_enabled))
-            return -1;
-        if (!rx_stream->start(shared_resources))
             return -1;
 
         std::cout << "Configuring and starting TX stream" << std::endl;
         if (!tx_stream->configure(shared_resources.signal_info, overlay_enabled))
             return -1;
         if (!tx_stream->start(shared_resources))
+            return -1;
+
+        std::cout << "Configuring and starting RX stream" << std::endl;
+        if (!rx_stream->configure(shared_resources.signal_info, overlay_enabled))
+            return -1;
+        if (!rx_stream->start(shared_resources))
             return -1;
     
         std::cout << std::endl;
@@ -218,8 +218,8 @@ int main(int argc, char** argv)
         std::cout << std::endl;
 
         std::cout << "Stopping RX and TX loops" << std::endl;
-        tx_stream->stop();
         rx_stream->stop();
+        tx_stream->stop();
     
         std::cout << std::endl;
     }

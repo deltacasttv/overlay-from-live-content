@@ -37,8 +37,7 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
 };
 
 std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device, int channel_index
-                                            , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
-                                            , Processor process_fct)
+                                                                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
         return nullptr;
@@ -47,7 +46,7 @@ std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device,
     if (!stream_handle)
         return nullptr;
     
-    return std::unique_ptr<TxStream>(new Deltacast::TxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct, process_fct));
+    return std::unique_ptr<TxStream>(new Deltacast::TxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct));
 }
 
 bool Deltacast::TxStream::configure(SignalInformation signal_info, bool overlay_enabled)
@@ -67,28 +66,28 @@ bool Deltacast::TxStream::configure(SignalInformation signal_info, bool overlay_
     return true;
 }
 
+bool Deltacast::TxStream::on_start(SharedResources& shared_resources)
+{
+    for (auto i = 0; i < _buffer_queue_depth; ++i)
+        shared_resources.synchronization.push_buffer_for_processing(std::get<HANDLE>(pop_slot()));
+
+    return true;
+}
+
 bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
 {
-    auto [ slot_handle, api_success ] = pop_slot();
-    if (!api_success && api_success.error_code() == VHDERR_TIMEOUT)
-        return true;
-    else if (!api_success)
-        return false;
-
-    // Wraps the slot handle so that it is pushed back to the queue when it goes out of scope
-    // regardless of the way the function returns (normal return, exception, etc.)
-    Helper::ResourceManager<HANDLE> slot_wrapper(slot_handle,
-        [this, &shared_resources](HANDLE slot_handle)
-        {
-            shared_resources.synchronization.notify_processing_finished();
-            push_slot(slot_handle);
-        }
-    );
-
     while (!_should_stop && !shared_resources.synchronization.wait_until_ready_to_process()) {}
     if (_should_stop)
         return false;
 
+    HANDLE slot_handle = shared_resources.synchronization.get_buffer_to_transfer();
+    if (!slot_handle)
+    {
+        std::cout << "ERROR for " << _name << ": No slot available to transfer" << std::endl;
+        return false;
+    }
+
+    ApiSuccess api_success;
     ULONG on_board_filling = 0, buffer_queue_filling = 0;
     if (!(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_ONBOARDBUFFER_FILLING, &on_board_filling))
         || !(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_FILLING, &buffer_queue_filling)))
@@ -97,27 +96,22 @@ bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
         return false;
     }
 
-    if (buffer_queue_filling > (shared_resources.maximum_latency - 2))
+    if ((on_board_filling + buffer_queue_filling) < shared_resources.maximum_latency)
     {
-        for (auto i = 0; i < buffer_queue_filling - (shared_resources.maximum_latency - 2); ++i)
+        push_slot(slot_handle);
+
         {
-            shared_resources.synchronization.notify_processing_finished();
-            while (!_should_stop && !shared_resources.synchronization.wait_until_ready_to_process()) {}
+            auto [ handle, api_success ] = pop_slot();
+            if (!api_success)
+            {
+                std::cout << "ERROR for " << _name << ": Cannot pop slot (" << api_success << ")" << std::endl;
+                return false;
+            }
+            slot_handle = handle;
         }
     }
 
-    UBYTE* buffer = nullptr;
-    ULONG buffer_size = 0;
-    if (!(api_success = VHD_GetSlotBuffer(slot_handle, VHD_SDI_BT_VIDEO, &buffer, &buffer_size)))
-    {
-        std::cout << "ERROR for " << _name << ": Cannot get slot buffer (" << api_success << ")" << std::endl;
-        return false;
-    }
-
-    _process_fct(shared_resources.buffer, shared_resources.buffer_size, buffer, buffer_size);
-
-    // slot_wrapper goes out of scope "normally" which notifies that the slot has been processed and pushes it back to the queue
-    // thanks to the lambda function passed to the ResourceManager
+    shared_resources.synchronization.push_buffer_for_processing(slot_handle);
 
     return true;
 }

@@ -20,6 +20,7 @@
 #include <chrono>
 #include <algorithm>
 #include <atomic>
+#include <deque>
 
 #include "VideoMasterHD_Core.h"
 
@@ -35,23 +36,26 @@ namespace Deltacast
             std::atomic_bool stop_is_requested = false;
             std::atomic_bool signal_has_changed = false;
 
+            void reset();
+
             bool wait_until_ready_to_process();
-            void notify_processing_finished();
-            bool wait_until_processed();
             void notify_ready_to_process();
 
-            std::unique_lock<std::mutex> lock();
+            HANDLE pop_buffer_for_processing();
+            void push_buffer_for_processing(HANDLE buffer);
+
+            HANDLE get_buffer_to_transfer();
+            void set_buffer_to_transfer(HANDLE buffer);
 
         private:
             std::mutex mutex;
             std::condition_variable condition_variable;
 
             bool to_process = false;
-            bool processed = false;
-        } synchronization;
 
-        UBYTE* buffer = nullptr;
-        ULONG buffer_size = 0;
+            std::deque<HANDLE> buffers_ready_for_processing;
+            std::deque<HANDLE> buffers_ready_for_transfer;
+        } synchronization;
 
         SignalInformation signal_info;
 

@@ -19,46 +19,70 @@ bool Deltacast::SharedResources::Synchronization::wait_until_ready_to_process()
 {
     using namespace std::chrono_literals;
     std::unique_lock lock(mutex);
-    return condition_variable.wait_for(lock, 100ms, [&]{ return to_process; });
-}
-
-void Deltacast::SharedResources::Synchronization::notify_processing_finished()
-{
-    {
-        std::lock_guard lock(mutex);
-        processed = true;
+    bool ready_to_process = condition_variable.wait_for(lock, 100ms, [&]{ return to_process; });
+    if (ready_to_process)
         to_process = false;
-    }
-    condition_variable.notify_one();
-}
-
-bool Deltacast::SharedResources::Synchronization::wait_until_processed()
-{
-    using namespace std::chrono_literals;
-    std::unique_lock lock(mutex);
-    return condition_variable.wait_for(lock, 100ms, [&]{ return processed; });
+    return ready_to_process;
 }
 
 void Deltacast::SharedResources::Synchronization::notify_ready_to_process()
 {
     {
         std::lock_guard lock(mutex);
-        processed = false;
         to_process = true;
     }
     condition_variable.notify_one();
 }
 
-std::unique_lock<std::mutex> Deltacast::SharedResources::Synchronization::lock()
+HANDLE Deltacast::SharedResources::Synchronization::pop_buffer_for_processing()
 {
-    return std::unique_lock(mutex);
+    std::lock_guard lock(mutex);
+    if (buffers_ready_for_processing.empty())
+    return nullptr;
+
+    auto slot_handle = buffers_ready_for_processing.front();
+    buffers_ready_for_processing.pop_front();
+
+    return slot_handle;
+}
+
+void Deltacast::SharedResources::Synchronization::push_buffer_for_processing(HANDLE buffer)
+{
+    std::lock_guard lock(mutex);
+    buffers_ready_for_processing.push_back(buffer);
+}
+
+HANDLE Deltacast::SharedResources::Synchronization::get_buffer_to_transfer()
+{
+    std::lock_guard lock(mutex);
+
+    if (buffers_ready_for_transfer.empty())
+        return nullptr;
+
+    auto slot_handle = buffers_ready_for_transfer.front();
+    buffers_ready_for_transfer.pop_front();
+
+    return slot_handle;
+}
+
+void Deltacast::SharedResources::Synchronization::set_buffer_to_transfer(HANDLE buffer)
+{
+    std::lock_guard lock(mutex);
+    buffers_ready_for_transfer.clear();
+    buffers_ready_for_transfer.push_back(buffer);
 }
 
 void Deltacast::SharedResources::reset()
 {
     synchronization.stop_is_requested = false;
     synchronization.signal_has_changed = false;
-    buffer = nullptr;
-    buffer_size = 0;
     signal_info = {};
+
+    synchronization.reset();
+}
+
+void Deltacast::SharedResources::Synchronization::reset()
+{
+    buffers_ready_for_processing.clear();
+    buffers_ready_for_transfer.clear();
 }

@@ -74,34 +74,34 @@ bool RxRenderer::stop()
 
 void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
 {
-    std::unique_ptr<uint8_t> to_render_data = nullptr;
-    uint64_t to_render_data_size = 0;
+    // std::unique_ptr<uint8_t> to_render_data = nullptr;
+    // uint64_t to_render_data_size = 0;
     
-    while (!_should_stop)
-    {
-        {
-            auto lock = shared_resources.synchronization.lock();
+    // while (!_should_stop)
+    // {
+    //     {
+    //         auto lock = shared_resources.synchronization.lock();
 
-            if (shared_resources.buffer && shared_resources.buffer_size)
-            {
-                if (!to_render_data || (to_render_data_size != shared_resources.buffer_size))
-                {
-                    to_render_data.reset(new uint8_t[shared_resources.buffer_size]);
-                    to_render_data_size = shared_resources.buffer_size;
-                }
+    //         if (shared_resources.buffer && shared_resources.buffer_size)
+    //         {
+    //             if (!to_render_data || (to_render_data_size != shared_resources.buffer_size))
+    //             {
+    //                 to_render_data.reset(new uint8_t[shared_resources.buffer_size]);
+    //                 to_render_data_size = shared_resources.buffer_size;
+    //             }
 
-                memcpy(to_render_data.get(), (uint8_t*)shared_resources.buffer, to_render_data_size);
-            }
-        }
+    //             memcpy(to_render_data.get(), (uint8_t*)shared_resources.buffer, to_render_data_size);
+    //         }
+    //     }
 
-        uint8_t* monitor_data = nullptr;
-        uint64_t monitor_data_size = 0;
-        if (_monitor.lock_data(&monitor_data, &monitor_data_size)) 
-        {
-            if (to_render_data && monitor_data && (monitor_data_size == shared_resources.buffer_size) && shared_resources.buffer)
-                memcpy(monitor_data, to_render_data.get(), monitor_data_size);
+    //     uint8_t* monitor_data = nullptr;
+    //     uint64_t monitor_data_size = 0;
+    //     if (_monitor.lock_data(&monitor_data, &monitor_data_size)) 
+    //     {
+    //         if (to_render_data && monitor_data && (monitor_data_size == shared_resources.buffer_size) && shared_resources.buffer)
+    //             memcpy(monitor_data, to_render_data.get(), monitor_data_size);
 
-            _monitor.unlock_data();
-        }
-    }
+    //         _monitor.unlock_data();
+    //     }
+    // }
 }
