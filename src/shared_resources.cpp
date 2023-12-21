@@ -68,6 +68,8 @@ HANDLE Deltacast::SharedResources::Synchronization::get_buffer_to_transfer()
 void Deltacast::SharedResources::Synchronization::set_buffer_to_transfer(HANDLE buffer)
 {
     std::lock_guard lock(mutex);
+    for (auto& skipped_buffer : buffers_ready_for_transfer)
+        buffers_ready_for_processing.push_back(skipped_buffer);
     buffers_ready_for_transfer.clear();
     buffers_ready_for_transfer.push_back(buffer);
 }

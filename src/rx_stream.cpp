@@ -128,12 +128,12 @@ bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
     ULONG tx_buffer_size = 0;
     VHD_GetSlotBuffer(tx_slot_handle, VHD_SDI_BT_VIDEO, &tx_buffer, &tx_buffer_size);
 
-    if (shared_resources.rx_renderer.has_value())
-        shared_resources.rx_renderer.value().update_buffer(buffer, buffer_size);
-
     _currently_active_processing_threads.fetch_add(1);
     std::thread([=, &shared_resources]()
     {
+        if (shared_resources.rx_renderer.has_value())
+            shared_resources.rx_renderer.value().update_buffer(buffer, buffer_size);
+
         _process_fct(buffer, buffer_size, tx_buffer, tx_buffer_size);
         shared_resources.synchronization.set_buffer_to_transfer(tx_slot_handle);
         shared_resources.synchronization.notify_ready_to_process();
