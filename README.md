@@ -72,6 +72,7 @@ Activating the rendering of the live content on the screen and the handling of t
 The application is designed to be easily customizable in terms of processing and memory allocation of the buffers.
 
 `processing.cpp` contains code for overlay and non-overlay processing which can be modified to implement any kind of processing.
+Pay extra care that the processing time shall be less than the time between two frames, otherwise the application will not be able to keep up with the incoming frames and will constantly drop content.
 
 `allocation.cpp` contains code for buffer allocation which can be modified to implement any kind of buffer allocation, be it on the GPU or the host memory.
 

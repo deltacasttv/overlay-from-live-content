@@ -55,6 +55,8 @@ namespace Deltacast
 
         SignalInformation signal_info;
 
+        unsigned int maximum_latency;
+
         void reset();
     };
 }

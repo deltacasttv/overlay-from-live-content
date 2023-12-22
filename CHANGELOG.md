@@ -1,3 +1,9 @@
+# Unreleased
+
+## Added
+
+- Parameter for handling maximum desired input to output latency (default is 2)
+
 # 1.0.1
 
 ## Fixed

@@ -44,7 +44,7 @@ The application performs the following actions:
 ## TX
 
 - `Preload`: 0
-- `Buffer queue depth`: 2
+- `Buffer queue depth`: 16
 - RGBA 8b `buffer packing` if overlay, RGB 8b if not
 - `Genlocked`
 
@@ -75,6 +75,8 @@ That way, we can guarantee that the buffer that will be communicated to the TX t
 
 ## TX
 
+When the minimal latency of 2 is a scenario achievable by the device, we can guarantee the following.
+
 Due to the nature of the communication between the RX and TX thread, the TX buffer queue will never be filled with more than one buffer at a time.
 Indeed, since the RX thread is the one that drives the TX thread, we can never end up in a situation where the RX thread will give buffers to the TX thread faster that the rate at which they are consumed.
 
@@ -84,3 +86,25 @@ If it is greater than 1 (0 is impossible since the device is always processing a
 Waiting for that next video frame is achieved thanks to the cadencing of the RX thread.
 The TX thread simply notifies that the processing has finished (although it actually wants to skip it) and then immediately waits again for a new buffer.
 This has the effect that the RX thread will go through one full cycle again, thus waiting for the next frame and achieving the desired cadencing.
+
+However, when the latency is greater than 2, the device will not be able to consume the on-board buffer fast enough and the on-board buffer queue will fill up.
+It will reach a stable state where the size of the buffer queue + the two on board buffers will be equal to the latency.
+In that case, we still need a way to ensure that this minimal latency is respected.
+This is achieved by the `--maximum-latency` parameter.
+When the latency is greater than 2, the `--maximum-latency` parameter is used to determine the number of buffers that need to be skipped and it is achieved similarly to the case where the latency is 2.
+
+We recommend keeping the `--maximum-latency` parameter to 2 and then fine-tune this parameter in case the device is not capable of achieving the desired latency.
+Another way to determine the proper value for this parameter is to know in advance the exact processing time, the time to transfer the data from the device to the host memory and the time to transfer the data from the host memory to the device.
+The latency that can be achieved is of the form `1 + ((processing_time + transfer_time_host_to_device + transfer_time_device_to_host) / period_of_the_signal)`, rounded up.
+
+For instance,
+```
+processing_time = 9 ms
+transfer_time_host_to_device = 12 ms
+transfer_time_device_to_host = 14 ms
+period_of_the_signal = 16.67 ms
+```
+leads to a latency of 4 frames, since `1 + ((9 + 12 + 14) / 16.67)=3.1`, rounded up and giving `4`.
+
+Due to the nature of the synchronisation between the RX and TX threads, a latency of more than 4 frames is impossible to achieve.
+We would need to parallelize the processing of the buffers which is something currently not supported.
