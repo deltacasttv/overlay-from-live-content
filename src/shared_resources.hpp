@@ -61,8 +61,6 @@ namespace Deltacast
         SignalInformation signal_info;
         std::optional<RxRenderer> rx_renderer;
 
-        unsigned int maximum_latency;
-
         void reset();
     };
 }

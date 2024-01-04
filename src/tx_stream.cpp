@@ -96,7 +96,7 @@ bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
         return false;
     }
 
-    if ((on_board_filling + buffer_queue_filling) < shared_resources.maximum_latency)
+    if (buffer_queue_filling == 0)
     {
         push_slot(slot_handle);
 
