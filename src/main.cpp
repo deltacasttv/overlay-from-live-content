@@ -73,7 +73,6 @@ int main(int argc, char** argv)
     int tx_stream_id = 0;
     bool overlay_enabled = false;
     bool renderer_enabled = false;
-    shared_resources.maximum_latency = 2;
 
     CLI::App app{"Generates some content from input and sends it to output"};
     app.add_option("-d,--device", device_id, "ID of the device to use");
@@ -81,7 +80,6 @@ int main(int argc, char** argv)
     app.add_option("-o,--output", tx_stream_id, "ID of the output connector to use");
     app.add_flag("--overlay,!--no-overlay", overlay_enabled, "Activates overlay on the output stream");
     app.add_flag("--renderer,!--no-renderer", renderer_enabled, "Activates rendering of the live input stream");
-    app.add_option("-l,--maximum-latency", shared_resources.maximum_latency, "Maximum desired latency in frames between input and output");
     CLI11_PARSE(app, argc, argv);
 
     signal(SIGINT, on_close);
@@ -131,13 +129,13 @@ int main(int argc, char** argv)
         std::cout << std::endl;
 
         auto window_refresh_interval = 10ms;
-        RxRenderer renderer("Live Content", decoded_signal_info.width / 2, decoded_signal_info.height / 2, window_refresh_interval.count());
         if (renderer_enabled)
         {
+            shared_resources.rx_renderer.emplace("Live Content", decoded_signal_info.width / 2, decoded_signal_info.height / 2, window_refresh_interval.count());
             std::cout << "Initializing live content rendering window" << std::endl;
-            if (!renderer.init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
+            if (!shared_resources.rx_renderer.value().init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
                 return -1;
-    
+
             std::cout << std::endl;
         }
 
@@ -161,27 +159,27 @@ int main(int argc, char** argv)
 
         std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
         auto rx_stream = Deltacast::RxStream::create(*device, rx_stream_id
-                                                    , allocate_buffer, deallocate_buffer);
+                                                    , allocate_buffer, deallocate_buffer
+                                                    , (overlay_enabled ? generate_overlay : generate_frame));
         if (!rx_stream)
             return -1;
 
         std::cout << "Opening TX stream " << tx_stream_id << "" << std::endl;
         auto tx_stream = Deltacast::TxStream::create(*device, tx_stream_id
-                                                    , allocate_buffer, deallocate_buffer
-                                                    , (overlay_enabled ? generate_overlay : generate_frame));
+                                                    , allocate_buffer, deallocate_buffer);
         if (!tx_stream)
-            return -1;
-                    
-        std::cout << "Configuring and starting RX stream" << std::endl;
-        if (!rx_stream->configure(shared_resources.signal_info, overlay_enabled))
-            return -1;
-        if (!rx_stream->start(shared_resources))
             return -1;
 
         std::cout << "Configuring and starting TX stream" << std::endl;
         if (!tx_stream->configure(shared_resources.signal_info, overlay_enabled))
             return -1;
         if (!tx_stream->start(shared_resources))
+            return -1;
+
+        std::cout << "Configuring and starting RX stream" << std::endl;
+        if (!rx_stream->configure(shared_resources.signal_info, overlay_enabled))
+            return -1;
+        if (!rx_stream->start(shared_resources))
             return -1;
     
         std::cout << std::endl;
@@ -191,10 +189,10 @@ int main(int argc, char** argv)
     
         std::cout << std::endl;
 
-        if (renderer_enabled)
+        if (shared_resources.rx_renderer.has_value())
         {
             std::cout << "Starting live content rendering" << std::endl;
-            renderer.start(shared_resources);
+            shared_resources.rx_renderer.value().start();
     
             std::cout << std::endl;
         }
@@ -204,12 +202,12 @@ int main(int argc, char** argv)
     
         std::cout << std::endl;
 
-        if (renderer_enabled)
+        if (shared_resources.rx_renderer.has_value())
         {
             std::cout << "Stopping live content rendering" << std::endl;
-            renderer.stop();
+            shared_resources.rx_renderer.value().stop();
     
-        std::cout << std::endl;
+            std::cout << std::endl;
         }
 
         std::cout << "Enabling loopback" << std::endl;
@@ -218,8 +216,8 @@ int main(int argc, char** argv)
         std::cout << std::endl;
 
         std::cout << "Stopping RX and TX loops" << std::endl;
-        tx_stream->stop();
         rx_stream->stop();
+        tx_stream->stop();
     
         std::cout << std::endl;
     }
