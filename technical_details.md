@@ -76,7 +76,7 @@ In order to guarantee that in all cases, the following strategies have been impl
 
 ## RX
 
-The buffer queue is emptied without notifying the TX thread before waiting for a new buffer.
+The buffer queue is emptied without starting any new processing.
 That way, we can guarantee that the buffer that will be communicated to the TX thread is always the most recent one.
 
 ## TX
