@@ -136,7 +136,6 @@ bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
 
         _process_fct(buffer, buffer_size, tx_buffer, tx_buffer_size);
         shared_resources.synchronization.set_buffer_to_transfer(tx_slot_handle);
-        shared_resources.synchronization.notify_ready_to_process();
         push_slot(slot_handle);
         _currently_active_processing_threads.fetch_sub(1);
     }).detach();

@@ -76,39 +76,37 @@ bool Deltacast::TxStream::on_start(SharedResources& shared_resources)
 
 bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
 {
-    while (!_should_stop && !shared_resources.synchronization.wait_until_ready_to_process()) {}
-    if (_should_stop)
-        return false;
-
-    HANDLE slot_handle = shared_resources.synchronization.get_buffer_to_transfer();
-    if (!slot_handle)
-    {
-        std::cout << "ERROR for " << _name << ": No slot available to transfer" << std::endl;
-        return false;
-    }
-
     ApiSuccess api_success;
-    ULONG on_board_filling = 0, buffer_queue_filling = 0;
-    if (!(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_ONBOARDBUFFER_FILLING, &on_board_filling))
-        || !(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_FILLING, &buffer_queue_filling)))
+    ULONG on_board_filling = 0;
+    while (!_should_stop
+            && !!(api_success = VHD_GetStreamProperty(*handle(), VHD_CORE_SP_ONBOARDBUFFER_FILLING, &on_board_filling))
+            && on_board_filling > 1)
     {
-        std::cout << "ERROR for " << _name << ": Cannot get stream property (" << api_success << ")" << std::endl;
-        return false;
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
     }
 
-    if (buffer_queue_filling == 0)
-    {
-        push_slot(slot_handle);
+    if (_should_stop || !api_success)
+        return false;
 
+    HANDLE slot_handle = nullptr;
+    while (!_should_stop
+            && !(slot_handle = shared_resources.synchronization.get_buffer_to_transfer()))
+    {
+        std::this_thread::sleep_for(std::chrono::microseconds(10));
+    }
+
+    if (_should_stop || !slot_handle)
+        return true;
+
+    push_slot(slot_handle);
+    {
+        auto [ handle, api_success ] = pop_slot();
+        if (!api_success)
         {
-            auto [ handle, api_success ] = pop_slot();
-            if (!api_success)
-            {
-                std::cout << "ERROR for " << _name << ": Cannot pop slot (" << api_success << ")" << std::endl;
-                return false;
-            }
-            slot_handle = handle;
+            std::cout << "ERROR for " << _name << ": Cannot pop slot (" << api_success << ")" << std::endl;
+            return false;
         }
+        slot_handle = handle;
     }
 
     shared_resources.synchronization.push_buffer_for_processing(slot_handle);

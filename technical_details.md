@@ -64,8 +64,7 @@ This communication happens as follows:
 1. The RX thread waits for a new buffer to be ready.
 2. The RX thread pops a buffer from the queue of TX buffers that are marked as ready for processing.
 3. The RX thread spawns a new processing thread that processes the buffer and marks it as ready for transmission when processing has finished. The RX buffer is then pushed back into the queue of the RX stream.
-4. When the TX buffer has been processed and marked as ready for transmission, the TX thread is notified.
-5. The TX thread wakes up, acquires the buffer ready for transmission and pushes it into the queue of the TX stream.
+5. The TX thread periodically assesses that the on-board buffering is empty and when it is, acquires the buffer ready for transmission and pushes it into the queue of the TX stream.
 6. The TX thread waits for the transfer to complete and then pushes the buffer back into the queue of buffers ready for processing.
 
 Loop back to point `1`

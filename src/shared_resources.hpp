@@ -39,9 +39,6 @@ namespace Deltacast
 
             void reset();
 
-            bool wait_until_ready_to_process();
-            void notify_ready_to_process();
-
             HANDLE pop_buffer_for_processing();
             void push_buffer_for_processing(HANDLE buffer);
 
@@ -51,8 +48,6 @@ namespace Deltacast
         private:
             std::mutex mutex;
             std::condition_variable condition_variable;
-
-            bool to_process = false;
 
             std::deque<HANDLE> buffers_ready_for_processing;
             std::deque<HANDLE> buffers_ready_for_transfer;

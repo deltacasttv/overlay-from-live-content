@@ -15,25 +15,6 @@
 
 #include "shared_resources.hpp"
 
-bool Deltacast::SharedResources::Synchronization::wait_until_ready_to_process()
-{
-    using namespace std::chrono_literals;
-    std::unique_lock lock(mutex);
-    bool ready_to_process = condition_variable.wait_for(lock, 100ms, [&]{ return to_process; });
-    if (ready_to_process)
-        to_process = false;
-    return ready_to_process;
-}
-
-void Deltacast::SharedResources::Synchronization::notify_ready_to_process()
-{
-    {
-        std::lock_guard lock(mutex);
-        to_process = true;
-    }
-    condition_variable.notify_one();
-}
-
 HANDLE Deltacast::SharedResources::Synchronization::pop_buffer_for_processing()
 {
     std::lock_guard lock(mutex);
