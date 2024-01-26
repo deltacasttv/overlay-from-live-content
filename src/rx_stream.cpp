@@ -37,7 +37,9 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
     {11, VHD_ST_RX11},
 };
 
-std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index, BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
+std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index
+                                                                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
+                                                                , Processor process_fct)
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
         return nullptr;
@@ -46,7 +48,7 @@ std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device,
     if (!stream_handle)
         return nullptr;
     
-    return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct));
+    return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct, process_fct));
 }
 
 bool Deltacast::RxStream::configure(SignalInformation signal_info, bool /*overlay_enabled*/)
@@ -65,13 +67,21 @@ bool Deltacast::RxStream::configure(SignalInformation signal_info, bool /*overla
     return true;
 }
 
-bool Deltacast::RxStream::on_start()
+bool Deltacast::RxStream::on_start(SharedResources& /*shared_resources*/)
 {
+    _currently_active_processing_threads = 0;
+
     bool all_slots_pushed = true;
     for (auto& slot : slots())
         all_slots_pushed = all_slots_pushed && push_slot(slot);
     
     return all_slots_pushed;
+}
+
+void Deltacast::RxStream::on_stop()
+{
+    while (_currently_active_processing_threads.load() > 0)
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
 }
 
 bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
@@ -93,33 +103,42 @@ bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
         VHD_GetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_FILLING, &filling);
     } while (filling > 0);
 
-    // Wraps the slot handle so that it is pushed back to the queue when it goes out of scope
-    // regardless of the way the function returns (normal return, exception, etc.)
-    Helper::ResourceManager<HANDLE> slot_wrapper(slot_handle,
-        [this, &shared_resources](HANDLE slot_handle)
-        {
-            push_slot(slot_handle);
-        }
-    );
-
     auto signal_info = _device.get_incoming_signal_information(_channel_index);
     if (signal_info.video_standard != shared_resources.signal_info.video_standard
         || signal_info.clock_divisor != shared_resources.signal_info.clock_divisor
         || signal_info.interface != shared_resources.signal_info.interface)
     {
         shared_resources.synchronization.signal_has_changed = true;
+        push_slot(slot_handle);
         return false;
     }
 
-    VHD_GetSlotBuffer(slot_handle, VHD_SDI_BT_VIDEO, &shared_resources.buffer, &shared_resources.buffer_size);
-    
-    shared_resources.synchronization.notify_ready_to_process();
-    
-    while (!_should_stop 
-        && !shared_resources.synchronization.wait_until_processed()) {}
+    UBYTE* buffer = nullptr;
+    ULONG buffer_size = 0;
+    VHD_GetSlotBuffer(slot_handle, VHD_SDI_BT_VIDEO, &buffer, &buffer_size);
 
-    // slot_wrapper goes out of scope "normally" which pushes it back to the queue
-    // thanks to the lambda function passed to the ResourceManager
+    HANDLE tx_slot_handle = shared_resources.synchronization.pop_buffer_for_processing();
+    if (!tx_slot_handle)
+    {
+        std::cout << "ERROR for " << _name << ": No slot available for processing" << std::endl;
+        return false;
+    }
 
+    UBYTE* tx_buffer = nullptr;
+    ULONG tx_buffer_size = 0;
+    VHD_GetSlotBuffer(tx_slot_handle, VHD_SDI_BT_VIDEO, &tx_buffer, &tx_buffer_size);
+
+    _currently_active_processing_threads.fetch_add(1);
+    std::thread([=, &shared_resources]()
+    {
+        if (shared_resources.rx_renderer.has_value())
+            shared_resources.rx_renderer.value().update_buffer(buffer, buffer_size);
+
+        _process_fct(buffer, buffer_size, tx_buffer, tx_buffer_size);
+        shared_resources.synchronization.set_buffer_to_transfer(tx_slot_handle);
+        push_slot(slot_handle);
+        _currently_active_processing_threads.fetch_sub(1);
+    }).detach();
+    
     return true;
 }

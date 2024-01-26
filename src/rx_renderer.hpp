@@ -17,8 +17,7 @@
 
 #include <videoviewer/videoviewer.hpp>
 #include <thread>
-
-#include "shared_resources.hpp"
+#include <mutex>
 
 class RxRenderer
 {
@@ -32,8 +31,10 @@ public:
     RxRenderer& operator=(RxRenderer&&) = delete;
 
     bool init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
-    bool start(Deltacast::SharedResources& shared_resources);
+    bool start();
     bool stop();
+
+    void update_buffer(uint8_t* buffer, uint32_t buffer_size);
 
 private:
     std::string _window_title;
@@ -48,5 +49,8 @@ private:
     std::thread _rendering_loop_thread;
 
     bool monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
-    void render_loop(Deltacast::SharedResources& shared_resources);
+    void render_loop();
+
+    std::mutex _buffer_mutex;
+    std::unique_ptr<uint8_t> _buffer = nullptr;
 };

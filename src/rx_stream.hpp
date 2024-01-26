@@ -23,26 +23,38 @@ namespace Deltacast
 {
     class RxStream : public Stream
     {
+    public:
+        using Processor = std::function<void(const uint8_t* input_buffer, uint32_t input_buffer_size, uint8_t* output_buffer, uint32_t output_buffer_size)>;
+
     private:
         RxStream() = delete;
         RxStream(const RxStream&) = delete;
         RxStream& operator=(const RxStream&) = delete;
 
         RxStream(Device& device, int channel_index, std::unique_ptr<Helper::StreamHandle> stream_handle
-                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
+                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
+                , Processor process_fct)
             : Stream(device, std::string("RX") + std::to_string(channel_index), channel_index, std::move(stream_handle)
                     , buffer_allocation_fct, buffer_deallocation_fct, VHD_WaitSlotFilled, VHD_QueueInSlot)
+            , _process_fct(process_fct)
         {
         }
 
     public:
-        static std::unique_ptr<RxStream> create(Device& device, int channel_index, BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct);
+        static std::unique_ptr<RxStream> create(Device& device, int channel_index
+                                                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
+                                                , Processor process_fct);
 
         bool configure(SignalInformation signal_info, bool overlay_enabled) override;
 
     private:
-        bool on_start() override;
+        Processor _process_fct;
+
+        bool on_start(SharedResources& shared_resources) override;
+        void on_stop() override;
 
         bool loop_iteration(SharedResources& shared_resources) override;
+
+        std::atomic_uint64_t _currently_active_processing_threads;
     };
 }

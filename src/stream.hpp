@@ -76,7 +76,8 @@ namespace Deltacast
 
         bool configure_application_buffers();
         bool uninit_application_buffers();
-        virtual bool on_start() { return true; };
+        virtual bool on_start(SharedResources& /*shared_resources*/) { return true; };
+        virtual void on_stop() { };
 
         const std::array<HANDLE, _buffer_queue_depth>& slots() const { return _slots; };
         std::pair<HANDLE, Helper::ApiSuccess> pop_slot();
