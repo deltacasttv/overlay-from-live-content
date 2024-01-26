@@ -39,18 +39,10 @@ void generate_overlay(const uint8_t* buffer, uint32_t buffer_size, uint8_t* over
     memset(overlay_buffer, 0, overlay_buffer_size);
 
     const uint32_t number_of_pixels = buffer_size / 3;
-    const uint32_t starting_point = (number_of_pixels / 2);
-    const uint32_t number_of_pixels_to_process = (number_of_pixels / 2);
+    const uint32_t starting_point = (number_of_pixels * 0.5);
+    const uint32_t number_of_pixels_to_process = (number_of_pixels - starting_point);
 
-    const int number_of_partitions = 4;
-    const uint32_t partition_size = number_of_pixels_to_process / number_of_partitions;
-
-    std::vector<std::thread> processors;
-    for (int i = 0; i < number_of_partitions; ++i)
-        processors.emplace_back(generate, buffer, overlay_buffer, starting_point + i * partition_size, starting_point + (i + 1) * partition_size);
-
-    for (auto& processor : processors)
-        processor.join();
+    generate(buffer, overlay_buffer, starting_point, starting_point + number_of_pixels_to_process);
 }
 
 void generate_frame(const uint8_t* buffer, uint32_t buffer_size, uint8_t* output_buffer, uint32_t output_buffer_size)
