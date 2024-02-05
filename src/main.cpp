@@ -24,9 +24,9 @@
 
 #include "version.h"
 
-#include "api_helper/api.hpp"
-#include "api_helper/api_success.hpp"
-#include "api_helper/enum_to_string.hpp"
+#include "VideoMasterAPIHelper/api.hpp"
+#include "VideoMasterAPIHelper/api_success.hpp"
+#include "VideoMasterAPIHelper/enum_to_string.hpp"
 #include "allocation.hpp"
 #include "device.hpp"
 #include "rx_renderer.hpp"

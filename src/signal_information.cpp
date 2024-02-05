@@ -15,7 +15,7 @@
 
 #include "signal_information.hpp"
 
-#include "api_helper/api_success.hpp"
+#include "VideoMasterAPIHelper/api_success.hpp"
 
 using Deltacast::Helper::ApiSuccess;
 

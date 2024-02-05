@@ -25,8 +25,15 @@ FetchContent_Declare(
     GIT_TAG        7197b483d08df009de5351d3b1437fa82c1834c3
 )
 
+FetchContent_Declare(
+    VideoMasterAPIHelper
+    GIT_REPOSITORY https://github.com/deltacasttv/videomaster-api-helper.git
+    GIT_TAG        1.0.0
+)
+
 FetchContent_MakeAvailable(cli11)
 FetchContent_MakeAvailable(video-viewer)
+FetchContent_MakeAvailable(VideoMasterAPIHelper)
 
 configure_file(${CMAKE_SOURCE_DIR}/src/version.h.in ${CMAKE_SOURCE_DIR}/src/version.h)
 
@@ -42,21 +49,17 @@ add_executable(${PROJECT_NAME}
     tx_stream.cpp
     processing.cpp
     allocation.cpp
-
-    api_helper/api.cpp
-    api_helper/handle_manager.cpp
-    api_helper/enum_to_string.cpp
 )
 
 if(WIN32)
     target_include_directories(${PROJECT_NAME} PUBLIC ${VIDEOMASTERHD_INCLUDE_DIRS})
     target_link_directories(${PROJECT_NAME} PUBLIC ${VIDEOMASTERHD_LIBRARIES}/x64/)
-    target_link_libraries(${PROJECT_NAME} VideoMasterHD CLI11::CLI11 video-viewer)
+    target_link_libraries(${PROJECT_NAME} VideoMasterHD CLI11::CLI11 video-viewer VideoMasterAPIHelper)
 elseif(UNIX AND NOT APPLE)
     target_include_directories(${PROJECT_NAME} PUBLIC ${VIDEOMASTERHD_INCLUDE_DIRS})
     target_link_directories(${PROJECT_NAME} PUBLIC ${VIDEOMASTERHD_LIBRARIES}/)
-    target_link_libraries(${PROJECT_NAME} PUBLIC videomasterhd pthread rt CLI11::CLI11 video-viewer)
+    target_link_libraries(${PROJECT_NAME} PUBLIC videomasterhd pthread rt CLI11::CLI11 video-viewer VideoMasterAPIHelper)
 elseif(UNIX AND APPLE)
     find_library(VIDEOMASTERHD_LIBRARIES VideoMasterHD /Library/Frameworks/VideoMasterHD.framework/)
-    target_link_libraries(${PROJECT_NAME} PUBLIC ${VIDEOMASTERHD_LIBRARIES} CLI11::CLI11 video-viewer)
+    target_link_libraries(${PROJECT_NAME} PUBLIC ${VIDEOMASTERHD_LIBRARIES} CLI11::CLI11 video-viewer VideoMasterAPIHelper)
 endif()
