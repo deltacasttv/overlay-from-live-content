@@ -33,9 +33,7 @@ conan install /path/to/video-viewer -b missing -g cmake_find_package
 
 ### VideoMaster SDK
 
-The VideoMaster SDK is required to build the application and the following environment variables must be set:
-- `VIDEOMASTERHD_INCLUDE_DIRS`: path to the VideoMaster SDK include directory
-- `VIDEOMASTERHD_LIBRARIES`: path to the VideoMaster SDK library directory
+The VideoMaster SDK is required to build the application. You must place the SDK in the folder `deps/VideoMaster`.
 
 ### Building with CMake
 
