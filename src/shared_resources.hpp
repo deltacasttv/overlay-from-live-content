@@ -20,10 +20,13 @@
 #include <chrono>
 #include <algorithm>
 #include <atomic>
+#include <memory>
 
 #include "VideoMasterHD_Core.h"
 
 #include "signal_information.hpp"
+#include "VideoMasterAPIHelper/VideoInformation/sdi.hpp"
+#include "VideoMasterAPIHelper/VideoInformation/dv.hpp"
 
 namespace Deltacast
 {
@@ -53,8 +56,7 @@ namespace Deltacast
         UBYTE* buffer = nullptr;
         ULONG buffer_size = 0;
 
-        SignalInformation signal_info;
-
+        std::unique_ptr<VideoMasterVideoInformation> video_information;
         unsigned int maximum_latency;
 
         void reset();

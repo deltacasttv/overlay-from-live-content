@@ -60,5 +60,5 @@ void Deltacast::SharedResources::reset()
     synchronization.signal_has_changed = false;
     buffer = nullptr;
     buffer_size = 0;
-    signal_info = {};
+    _video_information.reset();
 }

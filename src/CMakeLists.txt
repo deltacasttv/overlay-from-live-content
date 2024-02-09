@@ -24,7 +24,7 @@ FetchContent_Declare(
 FetchContent_Declare(
     VideoMasterAPIHelper
     GIT_REPOSITORY  https://github.com/deltacasttv/videomaster-api-helper.git
-    GIT_TAG         1.0.0
+    GIT_TAG         feature/video_information_module
     SOURCE_DIR      "${CMAKE_SOURCE_DIR}/deps/api_helper"
 )
 

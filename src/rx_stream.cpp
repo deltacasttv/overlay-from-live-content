@@ -37,24 +37,41 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
     {11, VHD_ST_RX11},
 };
 
-std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index, BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
+std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(
+    Device& device, int channel_index,
+    const std::unique_ptr<VideoMasterSdiVideoInformation>& video_info,
+    BufferAllocate buffer_allocation_fct,
+    BufferDeallocate buffer_deallocation_fct
+    )
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
         return nullptr;
         
-    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), VHD_SDI_STPROC_DISJOINED_VIDEO);
+    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), video_info->get_stream_processing_mode());
     if (!stream_handle)
         return nullptr;
     
     return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct));
 }
 
-bool Deltacast::RxStream::configure(SignalInformation signal_info, bool /*overlay_enabled*/)
+bool Deltacast::RxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool /*overlay_enabled*/)
 {
     ApiSuccess api_success;
+
+    auto video_format_optional = video_info->get_video_format(handle());
+    if (video_format_optional.has_value())
+    {
+        _video_format = video_format_optional.value();
+    }
+    else
+    {
+        std::cout << "ERROR for " << _name << ": Cannot get video format" << std::endl;
+        return false;
+    }
+
+    video_info->configure_stream(handle());
+
     if (!(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_TRANSFER_SCHEME, VHD_TRANSFER_UNCONSTRAINED))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_VIDEO_STANDARD, signal_info.video_standard))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_INTERFACE, signal_info.interface))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFER_PACKING, VHD_BUFPACK_VIDEO_RGB_24))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, _buffer_queue_depth)))
     {

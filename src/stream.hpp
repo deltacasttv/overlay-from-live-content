@@ -36,10 +36,12 @@ namespace Deltacast
 
         virtual ~Stream();
 
-        virtual bool configure(SignalInformation signal_info, bool overlay_enabled) = 0;
+        virtual bool configure(std::unique_ptr<VideoMasterVideoInformation>& video_information, bool overlay_enabled) = 0;
         
         bool start(SharedResources& shared_resources);
         bool stop();
+
+        VideoFormat video_format() const { return _video_format; }
 
     protected:
         Device& _device;
@@ -81,6 +83,8 @@ namespace Deltacast
         const std::array<HANDLE, _buffer_queue_depth>& slots() const { return _slots; };
         std::pair<HANDLE, Helper::ApiSuccess> pop_slot();
         Helper::ApiSuccess push_slot(HANDLE slot_handle);
+
+        VideoFormat _video_format = {};
 
     private:
         std::unique_ptr<Helper::StreamHandle> _stream_handle;
