@@ -36,27 +36,41 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
     {11, VHD_ST_TX11},
 };
 
-std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device, int channel_index
+std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device, int channel_index, std::unique_ptr<VideoMasterVideoInformation>& video_info
                                             , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
                                             , Processor process_fct)
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
         return nullptr;
 
-    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), VHD_SDI_STPROC_DISJOINED_VIDEO);
+    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), video_info->get_stream_processing_mode());
     if (!stream_handle)
         return nullptr;
     
     return std::unique_ptr<TxStream>(new Deltacast::TxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct, process_fct));
 }
 
-bool Deltacast::TxStream::configure(SignalInformation signal_info, bool overlay_enabled)
+bool Deltacast::TxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled)
 {
+    // set the same stream properties than the ones detected on RX
+    video_info->configure_stream(handle());
+    _video_format = video_info->get_video_format(handle()).value();
+
     ApiSuccess api_success;
-    if (!(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_VIDEO_STANDARD, signal_info.video_standard))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_INTERFACE, signal_info.interface))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_TX_GENLOCK, TRUE))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFER_PACKING, (overlay_enabled ? VHD_BUFPACK_VIDEO_RGBA_32 : VHD_BUFPACK_VIDEO_RGB_24)))
+
+    // set genlock tx
+    auto genlock_tx_prop_opt = video_info->get_genlock_tx_properties();
+    if (genlock_tx_prop_opt.has_value())
+    {
+        api_success = VHD_SetStreamProperty(*handle(), genlock_tx_prop_opt.value(), TRUE);
+        if (!api_success)
+        {
+            std::cout << "ERROR for " << _name << ": Cannot configure stream (" << api_success << ")" << std::endl;
+            return false;
+        }
+    }
+
+    if (!(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFER_PACKING, (overlay_enabled ? VHD_BUFPACK_VIDEO_RGBA_32 : VHD_BUFPACK_VIDEO_RGB_24)))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, _buffer_queue_depth))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_PRELOAD, 0)))
     {
@@ -108,7 +122,7 @@ bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
 
     UBYTE* buffer = nullptr;
     ULONG buffer_size = 0;
-    if (!(api_success = VHD_GetSlotBuffer(slot_handle, VHD_SDI_BT_VIDEO, &buffer, &buffer_size)))
+    if (!(api_success = VHD_GetSlotBuffer(slot_handle, shared_resources.video_info->get_buffer_type(), &buffer, &buffer_size)))
     {
         std::cout << "ERROR for " << _name << ": Cannot get slot buffer (" << api_success << ")" << std::endl;
         return false;

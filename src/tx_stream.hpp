@@ -43,11 +43,11 @@ namespace Deltacast
         }
 
     public:
-        static std::unique_ptr<TxStream> create(Device& device, int channel_index
+        static std::unique_ptr<TxStream> create(Device& device, int channel_index, std::unique_ptr<VideoMasterVideoInformation>& video_info
                                                 , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
                                                 , Processor process_fct);
 
-        bool configure(SignalInformation signal_info, bool overlay_enabled) override;
+        bool configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled) override;
 
     private:
         Processor _process_fct;

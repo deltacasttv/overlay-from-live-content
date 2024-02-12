@@ -19,6 +19,7 @@
 #include <atomic>
 
 #include "VideoMasterAPIHelper/handle_manager.hpp"
+#include "VideoMasterAPIHelper/VideoInformation/core.hpp"
 #include "signal_information.hpp"
 
 namespace Deltacast
@@ -46,10 +47,10 @@ namespace Deltacast
         void enable_loopback(int index);
         void disable_loopback(int index);
         bool wait_for_incoming_signal(int rx_index, const std::atomic_bool& stop_is_requested);
-        SignalInformation get_incoming_signal_information(int rx_index);
 
-        bool wait_genlock_locked(const std::atomic_bool& stop_is_requested);
-        bool configure_genlock(int genlock_source_rx_index, SignalInformation signal_info);
+        bool wait_genlock_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<VideoMasterVideoInformation>& video_info);
+        bool configure_genlock(int genlock_source_rx_index, std::unique_ptr<VideoMasterVideoInformation>& video_info);
+        std::unique_ptr<VideoMasterVideoInformation> get_video_information_for_channel(int index);
 
         bool configure_keyer(int rx_index, int tx_index);
 
@@ -58,10 +59,17 @@ namespace Deltacast
 
         friend std::ostream& operator<<(std::ostream& os, const Device& device);
 
+        enum class Direction
+        {
+            RX,
+            TX
+        };
+
     private:
         int _device_index;
         std::unique_ptr<Helper::BoardHandle> _device_handle;
 
         bool set_loopback_state(int index, bool enabled);
+        std::optional<ULONG> get_channel_type(int index, Direction direction);
     };
 }

@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+#include "VideoMasterAPIHelper/VideoInformation/core.hpp"
 #include "shared_resources.hpp"
 
 bool Deltacast::SharedResources::Synchronization::wait_until_ready_to_process()
@@ -60,5 +61,4 @@ void Deltacast::SharedResources::reset()
     synchronization.signal_has_changed = false;
     buffer = nullptr;
     buffer_size = 0;
-    signal_info = {};
 }

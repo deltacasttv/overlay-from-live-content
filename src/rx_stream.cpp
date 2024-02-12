@@ -37,30 +37,40 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
     {11, VHD_ST_RX11},
 };
 
-std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index, BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
+std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index,
+    std::unique_ptr<VideoMasterVideoInformation>& video_info,
+    BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
         return nullptr;
         
-    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), VHD_SDI_STPROC_DISJOINED_VIDEO);
+    auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), video_info->get_stream_processing_mode());
     if (!stream_handle)
         return nullptr;
     
     return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct));
 }
 
-bool Deltacast::RxStream::configure(SignalInformation signal_info, bool /*overlay_enabled*/)
+bool Deltacast::RxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool /*overlay_enabled*/)
 {
+
     ApiSuccess api_success;
+
+    // get autodetected values
+    video_info->get_stream_properties_values(handle());
+
+    // apply them to the stream
+    video_info->configure_stream(handle());
+
     if (!(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_TRANSFER_SCHEME, VHD_TRANSFER_UNCONSTRAINED))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_VIDEO_STANDARD, signal_info.video_standard))
-        || !(api_success = VHD_SetStreamProperty(*handle(), VHD_SDI_SP_INTERFACE, signal_info.interface))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFER_PACKING, VHD_BUFPACK_VIDEO_RGB_24))
         || !(api_success = VHD_SetStreamProperty(*handle(), VHD_CORE_SP_BUFFERQUEUE_DEPTH, _buffer_queue_depth)))
     {
         std::cout << "ERROR for " << _name << ": Cannot configure stream (" << api_success << ")" << std::endl;
         return false;
     }
+
+    _video_format = video_info->get_video_format(handle()).value();
     
     return true;
 }
@@ -102,16 +112,18 @@ bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
         }
     );
 
-    auto signal_info = _device.get_incoming_signal_information(_channel_index);
-    if (signal_info.video_standard != shared_resources.signal_info.video_standard
-        || signal_info.clock_divisor != shared_resources.signal_info.clock_divisor
-        || signal_info.interface != shared_resources.signal_info.interface)
+    // first re auto detect the stream properties
+    shared_resources.video_info->get_stream_properties_values(handle());
+    // then compare them to the ones we have
+    auto video_format = shared_resources.video_info->get_video_format(handle()).value();
+
+    if (video_format != _video_format)
     {
         shared_resources.synchronization.signal_has_changed = true;
         return false;
     }
 
-    VHD_GetSlotBuffer(slot_handle, VHD_SDI_BT_VIDEO, &shared_resources.buffer, &shared_resources.buffer_size);
+    VHD_GetSlotBuffer(slot_handle, shared_resources.video_info->get_buffer_type(), &shared_resources.buffer, &shared_resources.buffer_size);
     
     shared_resources.synchronization.notify_ready_to_process();
     

@@ -22,6 +22,7 @@
 #include <atomic>
 
 #include "VideoMasterHD_Core.h"
+#include "VideoMasterAPIHelper/VideoInformation/core.hpp"
 
 #include "signal_information.hpp"
 
@@ -53,7 +54,7 @@ namespace Deltacast
         UBYTE* buffer = nullptr;
         ULONG buffer_size = 0;
 
-        SignalInformation signal_info;
+        std::unique_ptr<VideoMasterVideoInformation> video_info;
 
         unsigned int maximum_latency;
 
