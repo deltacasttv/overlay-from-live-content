@@ -20,6 +20,7 @@
 #include "device.hpp"
 #include "stream.hpp"
 #include "shared_resources.hpp"
+#include "VideoMasterAPIHelper/VideoInformation/core.hpp"
 
 namespace Deltacast
 {

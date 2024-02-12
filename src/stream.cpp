@@ -26,7 +26,7 @@ Deltacast::Stream::~Stream()
 
 bool Deltacast::Stream::start(SharedResources& shared_resources)
 {
-    if (!configure_application_buffers())
+    if (!configure_application_buffers(shared_resources.video_info))
         return false;
     
     if (!on_start())
@@ -121,7 +121,7 @@ bool Deltacast::Stream::loop(SharedResources& shared_resources)
     return true;
 }
 
-bool Deltacast::Stream::configure_application_buffers()
+bool Deltacast::Stream::configure_application_buffers(std::unique_ptr<Deltacast::VideoMasterVideoInformation>& video_info)
 {
     ApiSuccess api_success{VHD_InitApplicationBuffers(*handle())};
     if (!api_success)
@@ -130,17 +130,27 @@ bool Deltacast::Stream::configure_application_buffers()
         return false;
     }
 
-    ULONG buffer_size = 0;
-    api_success = VHD_GetApplicationBuffersSize(*handle(), VHD_SDI_BT_VIDEO, &buffer_size);
-    if (!api_success || !buffer_size)
-    {
-        std::cout << "ERROR for " << _name << ": Cannot get application buffers size (" << api_success << ")" << std::endl;
-        return false;
-    }
+    // allocate vectors for buf desc
+    for (auto i = 0; i < _buffer_queue_depth; ++i)
+        _application_buffers.at(i) = std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>(video_info->get_nb_buffer_types());
 
+    // get the size of the application buffers and allocate them
     for (auto i = 0; i < _buffer_queue_depth; ++i)
     {
-        _application_buffers[i][VHD_SDI_BT_VIDEO] = _buffer_allocation_fct(buffer_size);
+        for (int type = 0; type < video_info->get_nb_buffer_types(); type++)
+        {
+            ULONG buffer_size = 0;
+            api_success = VHD_GetApplicationBuffersSize(*handle(), type, &buffer_size);
+            if (!api_success)
+            {
+                std::cout << "ERROR for " << _name << ": Cannot get application buffers size (" << api_success << ")" << std::endl;
+                return false;
+            }
+            if (!buffer_size)
+                continue;
+            
+            _application_buffers[i][type] = _buffer_allocation_fct(buffer_size);
+        }
         api_success = VHD_CreateSlotEx(*handle(), _application_buffers[i].data(), &_slots[i]);
         if (!api_success)
         {
@@ -155,7 +165,13 @@ bool Deltacast::Stream::configure_application_buffers()
 bool Deltacast::Stream::uninit_application_buffers()
 {
     for (auto i = 0; i < _buffer_queue_depth; ++i)
-        _buffer_deallocation_fct(_application_buffers[i][VHD_SDI_BT_VIDEO]);
-    
+    {
+        for (auto app_buffer: _application_buffers[i])
+        {
+            if (app_buffer.pBuffer)
+                _buffer_deallocation_fct(app_buffer);
+        }
+    }
+
     return true;
 }

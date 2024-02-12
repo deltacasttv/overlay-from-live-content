@@ -77,7 +77,7 @@ namespace Deltacast
         virtual bool loop(SharedResources& shared_resources);
         virtual bool loop_iteration(SharedResources& shared_resources) = 0;
 
-        bool configure_application_buffers();
+        bool configure_application_buffers(std::unique_ptr<Deltacast::VideoMasterVideoInformation>& video_info);
         bool uninit_application_buffers();
         virtual bool on_start() { return true; };
 
@@ -94,8 +94,7 @@ namespace Deltacast
 
         std::thread _loop_thread;
 
-        using SlotBufferDescriptors = std::array<VHD_APPLICATION_BUFFER_DESCRIPTOR, NB_VHD_SDI_BUFFERTYPE>;
-        std::array<SlotBufferDescriptors, _buffer_queue_depth> _application_buffers;
+        std::array<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>, _buffer_queue_depth> _application_buffers;
         std::array<HANDLE, _buffer_queue_depth> _slots;
 
         uint64_t _number_of_pushed_slots = 0;

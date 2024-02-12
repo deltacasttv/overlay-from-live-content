@@ -208,7 +208,7 @@ bool Deltacast::Device::wait_genlock_locked(const std::atomic_bool& stop_is_requ
 {
     auto genlock_status_prop_optional = video_info->get_genlock_status_properties();
     if (!genlock_status_prop_optional.has_value())
-        return false;
+        return true;
 
    while (!stop_is_requested.load())
    {
