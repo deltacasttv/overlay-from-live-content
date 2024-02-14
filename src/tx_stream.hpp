@@ -48,11 +48,12 @@ namespace Deltacast
                                                 , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
                                                 , Processor process_fct);
 
-        bool configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled) override;
+        bool configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled, std::unordered_map<uint32_t, uint32_t> stream_properties);
 
     private:
         Processor _process_fct;
 
+        bool on_start(SharedResources& shared_resources) override;
         bool loop_iteration(SharedResources& shared_resources) override;
     };
 }

@@ -26,10 +26,7 @@ Deltacast::Stream::~Stream()
 
 bool Deltacast::Stream::start(SharedResources& shared_resources)
 {
-    if (!configure_application_buffers(shared_resources.video_info))
-        return false;
-    
-    if (!on_start())
+    if (!on_start(shared_resources))
         return false;
 
     ApiSuccess api_success{VHD_StartStream(*handle())};

@@ -14,6 +14,7 @@
  */
 
 #include "device.hpp"
+#include "rx_stream.hpp"
 
 #include <string>
 #include <thread>
@@ -208,7 +209,7 @@ bool Deltacast::Device::wait_genlock_locked(const std::atomic_bool& stop_is_requ
 {
     auto genlock_status_prop_optional = video_info->get_genlock_status_properties();
     if (!genlock_status_prop_optional.has_value())
-        return true;
+      return true;
 
    while (!stop_is_requested.load())
    {
@@ -226,24 +227,18 @@ bool Deltacast::Device::wait_genlock_locked(const std::atomic_bool& stop_is_requ
 bool Deltacast::Device::configure_genlock(int genlock_source_rx_index,
                                           std::unique_ptr<VideoMasterVideoInformation>& video_info)
 {
-
-   if (id_to_rx_genlock_source.find(genlock_source_rx_index) == id_to_rx_genlock_source.end())
-      return false;
-
-   ApiSuccess api_success;
-   auto       genlock_src_property = video_info->get_genlock_source_properties();
    if (video_info->configure_genlock(handle(), genlock_source_rx_index))
       return true;
    return false;
 }
 
 std::unique_ptr<Deltacast::VideoMasterVideoInformation>
-Deltacast::Device::get_video_information_for_channel(int index)
+Deltacast::Device::get_video_information_for_channel(int index, Direction direction)
 {
    std::unique_ptr<VideoMasterVideoInformation> _video_information = {};
 
    // identify the channel type to know which VideoInformation implementation to use
-   auto channel_type_optional = get_channel_type(index, Direction::RX);
+   auto channel_type_optional = get_channel_type(index, direction);
    if (!channel_type_optional.has_value())
       return {};
 

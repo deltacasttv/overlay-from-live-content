@@ -23,8 +23,8 @@
 #include "VideoMasterAPIHelper/handle_manager.hpp"
 #include "VideoMasterAPIHelper/VideoInformation/core.hpp"
 
-#include "device.hpp"
 #include "shared_resources.hpp"
+#include "device.hpp"
 
 #include "VideoMasterHD_ApplicationBuffers.h"
 
@@ -38,11 +38,10 @@ namespace Deltacast
 
         virtual ~Stream();
 
-        virtual bool configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled) = 0;
-        
         bool start(SharedResources& shared_resources);
         bool stop();
         VideoFormat video_format() const { return _video_format; }
+        std::unordered_map<uint32_t, uint32_t> get_stream_properties(std::unique_ptr<VideoMasterVideoInformation>& video_info) { return video_info->get_stream_properties_values(handle()); }
 
     protected:
         Device& _device;
@@ -79,7 +78,7 @@ namespace Deltacast
 
         bool configure_application_buffers(std::unique_ptr<Deltacast::VideoMasterVideoInformation>& video_info);
         bool uninit_application_buffers();
-        virtual bool on_start() { return true; };
+        virtual bool on_start(SharedResources& shared_resources) { return true; };
 
         const std::array<HANDLE, _buffer_queue_depth>& slots() const { return _slots; };
         std::pair<HANDLE, Helper::ApiSuccess> pop_slot();

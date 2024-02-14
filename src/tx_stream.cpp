@@ -46,14 +46,14 @@ std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device,
     auto stream_handle = get_stream_handle(device.handle(), id_to_stream_type.at(channel_index), video_info->get_stream_processing_mode());
     if (!stream_handle)
         return nullptr;
-    
+
     return std::unique_ptr<TxStream>(new Deltacast::TxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct, process_fct));
 }
 
-bool Deltacast::TxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled)
+bool Deltacast::TxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled, std::unordered_map<uint32_t, uint32_t> config_properties)
 {
     // set the same stream properties than the ones detected on RX
-    video_info->configure_stream(handle());
+    video_info->set_stream_properties_values(handle(), config_properties);
     _video_format = video_info->get_video_format(handle()).value();
 
     ApiSuccess api_success;
@@ -122,7 +122,7 @@ bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
 
     UBYTE* buffer = nullptr;
     ULONG buffer_size = 0;
-    if (!(api_success = VHD_GetSlotBuffer(slot_handle, shared_resources.video_info->get_buffer_type(), &buffer, &buffer_size)))
+    if (!(api_success = VHD_GetSlotBuffer(slot_handle, shared_resources.tx_video_info->get_buffer_type(), &buffer, &buffer_size)))
     {
         std::cout << "ERROR for " << _name << ": Cannot get slot buffer (" << api_success << ")" << std::endl;
         return false;
@@ -132,6 +132,14 @@ bool Deltacast::TxStream::loop_iteration(SharedResources& shared_resources)
 
     // slot_wrapper goes out of scope "normally" which notifies that the slot has been processed and pushes it back to the queue
     // thanks to the lambda function passed to the ResourceManager
+
+    return true;
+}
+
+bool Deltacast::TxStream::on_start(SharedResources& shared_resources)
+{
+    if (!configure_application_buffers(shared_resources.tx_video_info))
+        return false;
 
     return true;
 }

@@ -24,6 +24,8 @@
 
 namespace Deltacast
 {
+    class RxStream;
+
     class Device
     {
     private:
@@ -38,6 +40,13 @@ namespace Deltacast
         }
 
     public:
+
+        enum class Direction
+        {
+            RX,
+            TX
+        };
+
         ~Device();
 
         static std::unique_ptr<Device> create(int device_index);
@@ -50,7 +59,7 @@ namespace Deltacast
 
         bool wait_genlock_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<VideoMasterVideoInformation>& video_info);
         bool configure_genlock(int genlock_source_rx_index, std::unique_ptr<VideoMasterVideoInformation>& video_info);
-        std::unique_ptr<VideoMasterVideoInformation> get_video_information_for_channel(int index);
+        std::unique_ptr<VideoMasterVideoInformation> get_video_information_for_channel(int index, Direction direction);
 
         bool configure_keyer(int rx_index, int tx_index);
 
@@ -58,12 +67,6 @@ namespace Deltacast
         Helper::BoardHandle& handle() { return *_device_handle; }
 
         friend std::ostream& operator<<(std::ostream& os, const Device& device);
-
-        enum class Direction
-        {
-            RX,
-            TX
-        };
 
     private:
         int _device_index;
