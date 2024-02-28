@@ -40,8 +40,8 @@ namespace Deltacast
 
         bool start(SharedResources& shared_resources);
         bool stop();
-        VideoFormat video_format() const { return _video_format; }
-        std::unordered_map<uint32_t, uint32_t> get_stream_properties(std::unique_ptr<VideoMasterVideoInformation>& video_info) { return video_info->get_stream_properties_values(handle()); }
+        Helper::VideoFormat video_format() const { return _video_format; }
+        std::unordered_map<uint32_t, uint32_t> get_stream_properties(std::unique_ptr<Helper::VideoInformation>& video_info) { return video_info->get_stream_properties_values(handle()); }
 
     protected:
         Device& _device;
@@ -76,14 +76,14 @@ namespace Deltacast
         virtual bool loop(SharedResources& shared_resources);
         virtual bool loop_iteration(SharedResources& shared_resources) = 0;
 
-        bool configure_application_buffers(std::unique_ptr<Deltacast::VideoMasterVideoInformation>& video_info);
+        bool configure_application_buffers(std::unique_ptr<Helper::VideoInformation>& video_info);
         bool uninit_application_buffers();
         virtual bool on_start(SharedResources& shared_resources) { return true; };
 
         const std::array<HANDLE, _buffer_queue_depth>& slots() const { return _slots; };
         std::pair<HANDLE, Helper::ApiSuccess> pop_slot();
         Helper::ApiSuccess push_slot(HANDLE slot_handle);
-        VideoFormat _video_format = {};
+        Helper::VideoFormat _video_format = {};
 
     private:
         std::unique_ptr<Helper::StreamHandle> _stream_handle;

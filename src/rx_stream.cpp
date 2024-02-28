@@ -38,7 +38,7 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
 };
 
 std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index,
-    std::unique_ptr<VideoMasterVideoInformation>& video_info,
+    std::unique_ptr<Helper::VideoInformation>& video_info,
     BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
@@ -51,13 +51,13 @@ std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device,
     return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct));
 }
 
-bool Deltacast::RxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool /*overlay_enabled*/)
+bool Deltacast::RxStream::configure(std::unique_ptr<Helper::VideoInformation>& video_info, bool /*overlay_enabled*/)
 {
 
     ApiSuccess api_success;
 
     // apply them to the stream
-    auto api_succes_opt = video_info->configure_stream(handle());
+    auto api_succes_opt = video_info->set_stream_properties_values(handle(), video_info->get_stream_properties_values(handle()));
     if (!api_succes_opt.has_value() || !api_succes_opt.value())
     {
         std::cout << "ERROR for " << _name << ": Cannot configure stream (" << api_succes_opt.value() << ")" << std::endl;

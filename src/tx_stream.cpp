@@ -36,7 +36,7 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
     {11, VHD_ST_TX11},
 };
 
-std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device, int channel_index, std::unique_ptr<VideoMasterVideoInformation>& video_info
+std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device, int channel_index, std::unique_ptr<Helper::VideoInformation>& video_info
                                             , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
                                             , Processor process_fct)
 {
@@ -50,7 +50,7 @@ std::unique_ptr<Deltacast::TxStream> Deltacast::TxStream::create(Device& device,
     return std::unique_ptr<TxStream>(new Deltacast::TxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct, process_fct));
 }
 
-bool Deltacast::TxStream::configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled, std::unordered_map<uint32_t, uint32_t> config_properties)
+bool Deltacast::TxStream::configure(std::unique_ptr<Helper::VideoInformation>& video_info, bool overlay_enabled, std::unordered_map<uint32_t, uint32_t> config_properties)
 {
     // set the same stream properties than the ones detected on RX
     video_info->set_stream_properties_values(handle(), config_properties);
@@ -59,7 +59,7 @@ bool Deltacast::TxStream::configure(std::unique_ptr<VideoMasterVideoInformation>
     ApiSuccess api_success;
 
     // set genlock tx
-    auto genlock_tx_prop_opt = video_info->get_genlock_tx_properties();
+    auto genlock_tx_prop_opt = video_info->get_sync_tx_properties();
     if (genlock_tx_prop_opt.has_value())
     {
         api_success = VHD_SetStreamProperty(*handle(), genlock_tx_prop_opt.value(), TRUE);

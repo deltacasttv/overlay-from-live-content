@@ -118,7 +118,7 @@ bool Deltacast::Stream::loop(SharedResources& shared_resources)
     return true;
 }
 
-bool Deltacast::Stream::configure_application_buffers(std::unique_ptr<Deltacast::VideoMasterVideoInformation>& video_info)
+bool Deltacast::Stream::configure_application_buffers(std::unique_ptr<Helper::VideoInformation>& video_info)
 {
     ApiSuccess api_success{VHD_InitApplicationBuffers(*handle())};
     if (!api_success)

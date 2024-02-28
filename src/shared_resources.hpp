@@ -54,8 +54,8 @@ namespace Deltacast
         UBYTE* buffer = nullptr;
         ULONG buffer_size = 0;
 
-        std::unique_ptr<VideoMasterVideoInformation> rx_video_info;
-        std::unique_ptr<VideoMasterVideoInformation> tx_video_info;
+        std::unique_ptr<Helper::VideoInformation> rx_video_info;
+        std::unique_ptr<Helper::VideoInformation> tx_video_info;
 
         unsigned int maximum_latency;
 

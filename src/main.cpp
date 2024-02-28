@@ -121,10 +121,10 @@ int main(int argc, char** argv)
             return -1;
 
         std::cout << "Configuring genlock" << std::endl;
-        if (!device->configure_genlock(rx_stream_id, shared_resources.rx_video_info))
+        if (!device->configure_sync(rx_stream_id, shared_resources.rx_video_info))
             return -1;
         std::cout << "Waiting for genlock locked" << std::endl;
-        if (!device->wait_genlock_locked(shared_resources.synchronization.stop_is_requested, shared_resources.rx_video_info))
+        if (!device->wait_sync_locked(shared_resources.synchronization.stop_is_requested, shared_resources.rx_video_info))
             return -1;
 
         if (overlay_enabled)

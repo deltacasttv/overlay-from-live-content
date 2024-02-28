@@ -205,9 +205,9 @@ bool Deltacast::Device::wait_for_incoming_signal(int                     rx_inde
    return false;
 }
 
-bool Deltacast::Device::wait_genlock_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<VideoMasterVideoInformation>& video_info)
+bool Deltacast::Device::wait_sync_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<Helper::VideoInformation>& video_info)
 {
-    auto genlock_status_prop_optional = video_info->get_genlock_status_properties();
+    auto genlock_status_prop_optional = video_info->get_sync_status_properties();
     if (!genlock_status_prop_optional.has_value())
       return true;
 
@@ -224,18 +224,18 @@ bool Deltacast::Device::wait_genlock_locked(const std::atomic_bool& stop_is_requ
    return false;
 }
 
-bool Deltacast::Device::configure_genlock(int genlock_source_rx_index,
-                                          std::unique_ptr<VideoMasterVideoInformation>& video_info)
+bool Deltacast::Device::configure_sync(int genlock_source_rx_index,
+                                          std::unique_ptr<Helper::VideoInformation>& video_info)
 {
-   if (video_info->configure_genlock(handle(), genlock_source_rx_index))
+   if (video_info->configure_sync(handle(), genlock_source_rx_index))
       return true;
    return false;
 }
 
-std::unique_ptr<Deltacast::VideoMasterVideoInformation>
+std::unique_ptr<Deltacast::Helper::VideoInformation>
 Deltacast::Device::get_video_information_for_channel(int index, Direction direction)
 {
-   std::unique_ptr<VideoMasterVideoInformation> _video_information = {};
+   std::unique_ptr<Helper::VideoInformation> _video_information = {};
 
    // identify the channel type to know which VideoInformation implementation to use
    auto channel_type_optional = get_channel_type(index, direction);
@@ -249,11 +249,11 @@ Deltacast::Device::get_video_information_for_channel(int index, Direction direct
    case VHD_CHNTYPE_HDSDI:
    case VHD_CHNTYPE_3GSDI:
    case VHD_CHNTYPE_12GSDI:
-      _video_information = std::make_unique<VideoMasterSdiVideoInformation>();
+      _video_information = std::make_unique<Helper::SdiVideoInformation>();
       break;
    case VHD_CHNTYPE_HDMI:
    case VHD_CHNTYPE_DISPLAYPORT:
-      _video_information = std::make_unique<VideoMasterDvVideoInformation>();
+      _video_information = std::make_unique<Helper::DvVideoInformation>();
       break;
    default:
       break;

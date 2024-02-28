@@ -38,10 +38,10 @@ namespace Deltacast
 
     public:
         static std::unique_ptr<RxStream> create(Device& device, int channel_index,
-                                                std::unique_ptr<VideoMasterVideoInformation>& video_info,
+                                                std::unique_ptr<Helper::VideoInformation>& video_info,
                                                 BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct);
 
-        bool configure(std::unique_ptr<VideoMasterVideoInformation>& video_info, bool overlay_enabled);
+        bool configure(std::unique_ptr<Helper::VideoInformation>& video_info, bool overlay_enabled);
 
     private:
         bool on_start(SharedResources& shared_resources) override;

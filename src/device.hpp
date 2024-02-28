@@ -57,9 +57,9 @@ namespace Deltacast
         void disable_loopback(int index);
         bool wait_for_incoming_signal(int rx_index, const std::atomic_bool& stop_is_requested);
 
-        bool wait_genlock_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<VideoMasterVideoInformation>& video_info);
-        bool configure_genlock(int genlock_source_rx_index, std::unique_ptr<VideoMasterVideoInformation>& video_info);
-        std::unique_ptr<VideoMasterVideoInformation> get_video_information_for_channel(int index, Direction direction);
+        bool wait_sync_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<Helper::VideoInformation>& video_info);
+        bool configure_sync(int genlock_source_rx_index, std::unique_ptr<Helper::VideoInformation>& video_info);
+        std::unique_ptr<Helper::VideoInformation> get_video_information_for_channel(int index, Direction direction);
 
         bool configure_keyer(int rx_index, int tx_index);
 
