@@ -20,7 +20,7 @@
 #include <functional>
 #include <thread>
 
-#include "api_helper/handle_manager.hpp"
+#include "VideoMasterAPIHelper/handle_manager.hpp"
 #include "device.hpp"
 #include "shared_resources.hpp"
 

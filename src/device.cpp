@@ -20,7 +20,7 @@
 
 #include "VideoMasterHD_Sdi_Keyer.h"
 
-#include "api_helper/handle_manager.hpp"
+#include "VideoMasterAPIHelper/handle_manager.hpp"
 
 using Deltacast::Helper::ApiSuccess;
 
