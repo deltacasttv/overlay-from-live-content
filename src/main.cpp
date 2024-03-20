@@ -111,8 +111,8 @@ int main(int argc, char** argv)
         shared_resources.reset();
 
         // identify connector type
-        shared_resources.rx_video_info = std::move(device->get_video_information_for_channel(rx_stream_id, Deltacast::Device::Direction::RX));
-        shared_resources.tx_video_info = std::move(device->get_video_information_for_channel(tx_stream_id, Deltacast::Device::Direction::TX));
+        shared_resources.rx_video_info = std::move(device->factory_create_video_information_for_channel(rx_stream_id, Deltacast::Device::Direction::RX));
+        shared_resources.tx_video_info = std::move(device->factory_create_video_information_for_channel(tx_stream_id, Deltacast::Device::Direction::TX));
         std::cout << "Input  connector : " << *shared_resources.rx_video_info << std::endl;
         std::cout << "Output connector : " << *shared_resources.tx_video_info << std::endl;
 

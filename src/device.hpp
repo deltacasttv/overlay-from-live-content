@@ -59,7 +59,7 @@ namespace Deltacast
 
         bool wait_sync_locked(const std::atomic_bool& stop_is_requested, std::unique_ptr<Helper::VideoInformation>& video_info);
         bool configure_sync(int genlock_source_rx_index, std::unique_ptr<Helper::VideoInformation>& video_info);
-        std::unique_ptr<Helper::VideoInformation> get_video_information_for_channel(int index, Direction direction);
+        std::unique_ptr<Helper::VideoInformation> factory_create_video_information_for_channel(int index, Direction direction);
 
         bool configure_keyer(int rx_index, int tx_index);
 

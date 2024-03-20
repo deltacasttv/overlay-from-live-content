@@ -61,36 +61,6 @@ const std::unordered_map<uint32_t, VHD_CORE_BOARDPROPERTY> id_to_rx_status_prop 
    { 6, VHD_CORE_BP_RX6_STATUS }, { 7, VHD_CORE_BP_RX7_STATUS },   { 8, VHD_CORE_BP_RX8_STATUS },
    { 9, VHD_CORE_BP_RX9_STATUS }, { 10, VHD_CORE_BP_RX10_STATUS }, { 11, VHD_CORE_BP_RX11_STATUS },
 };
-const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_video_standard_prop = {
-   { 0, VHD_SDI_BP_RX0_STANDARD },   { 1, VHD_SDI_BP_RX1_STANDARD },
-   { 2, VHD_SDI_BP_RX2_STANDARD },   { 3, VHD_SDI_BP_RX3_STANDARD },
-   { 4, VHD_SDI_BP_RX4_STANDARD },   { 5, VHD_SDI_BP_RX5_STANDARD },
-   { 6, VHD_SDI_BP_RX6_STANDARD },   { 7, VHD_SDI_BP_RX7_STANDARD },
-   { 8, VHD_SDI_BP_RX8_STANDARD },   { 9, VHD_SDI_BP_RX9_STANDARD },
-   { 10, VHD_SDI_BP_RX10_STANDARD }, { 11, VHD_SDI_BP_RX11_STANDARD },
-};
-const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_clock_divisor_prop = {
-   { 0, VHD_SDI_BP_RX0_CLOCK_DIV },   { 1, VHD_SDI_BP_RX1_CLOCK_DIV },
-   { 2, VHD_SDI_BP_RX2_CLOCK_DIV },   { 3, VHD_SDI_BP_RX3_CLOCK_DIV },
-   { 4, VHD_SDI_BP_RX4_CLOCK_DIV },   { 5, VHD_SDI_BP_RX5_CLOCK_DIV },
-   { 6, VHD_SDI_BP_RX6_CLOCK_DIV },   { 7, VHD_SDI_BP_RX7_CLOCK_DIV },
-   { 8, VHD_SDI_BP_RX8_CLOCK_DIV },   { 9, VHD_SDI_BP_RX9_CLOCK_DIV },
-   { 10, VHD_SDI_BP_RX10_CLOCK_DIV }, { 11, VHD_SDI_BP_RX11_CLOCK_DIV },
-};
-const std::unordered_map<uint32_t, VHD_SDI_BOARDPROPERTY> id_to_rx_interface_prop = {
-   { 0, VHD_SDI_BP_RX0_INTERFACE },   { 1, VHD_SDI_BP_RX1_INTERFACE },
-   { 2, VHD_SDI_BP_RX2_INTERFACE },   { 3, VHD_SDI_BP_RX3_INTERFACE },
-   { 4, VHD_SDI_BP_RX4_INTERFACE },   { 5, VHD_SDI_BP_RX5_INTERFACE },
-   { 6, VHD_SDI_BP_RX6_INTERFACE },   { 7, VHD_SDI_BP_RX7_INTERFACE },
-   { 8, VHD_SDI_BP_RX8_INTERFACE },   { 9, VHD_SDI_BP_RX9_INTERFACE },
-   { 10, VHD_SDI_BP_RX10_INTERFACE }, { 11, VHD_SDI_BP_RX11_INTERFACE },
-};
-const std::unordered_map<uint32_t, VHD_GENLOCKSOURCE> id_to_rx_genlock_source = {
-   { 0, VHD_GENLOCK_RX0 }, { 1, VHD_GENLOCK_RX1 },   { 2, VHD_GENLOCK_RX2 },
-   { 3, VHD_GENLOCK_RX3 }, { 4, VHD_GENLOCK_RX4 },   { 5, VHD_GENLOCK_RX5 },
-   { 6, VHD_GENLOCK_RX6 }, { 7, VHD_GENLOCK_RX7 },   { 8, VHD_GENLOCK_RX8 },
-   { 9, VHD_GENLOCK_RX9 }, { 10, VHD_GENLOCK_RX10 }, { 11, VHD_GENLOCK_RX11 },
-};
 
 const std::unordered_map<uint32_t, VHD_KEYERINPUT> id_to_keyer_rx_input = {
    { 0, VHD_KINPUT_RX0 },
@@ -192,14 +162,13 @@ bool Deltacast::Device::wait_for_incoming_signal(int                     rx_inde
 
    while (!stop_is_requested.load())
    {
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
       ULONG status = VHD_CORE_RXSTS_UNLOCKED;
       auto  api_success = ApiSuccess{
          VHD_GetBoardProperty(*handle(), id_to_rx_status_prop.at(rx_index), &status)
       };
       if (api_success && !(status & VHD_CORE_RXSTS_UNLOCKED))
          return true;
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
    }
 
    return false;
@@ -233,7 +202,7 @@ bool Deltacast::Device::configure_sync(int genlock_source_rx_index,
 }
 
 std::unique_ptr<Deltacast::Helper::VideoInformation>
-Deltacast::Device::get_video_information_for_channel(int index, Direction direction)
+Deltacast::Device::factory_create_video_information_for_channel(int index, Direction direction)
 {
    std::unique_ptr<Helper::VideoInformation> _video_information = {};
 
@@ -322,9 +291,10 @@ namespace Deltacast
 {
 std::ostream& operator<<(std::ostream& os, const Device& device)
 {
-   ULONG driver_version = 0, firmware_version, number_of_rx_channels, number_of_tx_channels;
+   ULONG firmware_version, number_of_rx_channels, number_of_tx_channels;
+   const char* driver_version;
 
-   VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_DRIVER_VERSION, &driver_version);
+   driver_version = VHD_GetDriverStringVersion(**(device._device_handle));
    VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_FIRMWARE_VERSION, &firmware_version);
    VHD_GetBoardProperty(**(device._device_handle), VHD_CORE_BP_NB_RXCHANNELS,
                         &number_of_rx_channels);
@@ -338,12 +308,7 @@ std::ostream& operator<<(std::ostream& os, const Device& device)
       << " ]"
       << "\n";
    os << "    - PCIe Id string: " << pcie_id_string << "\n";
-   os << "    - Driver v" << ((driver_version & 0xFF000000) >> 24) << "."
-      << ((driver_version & 0x00FF0000) >> 16) << "." << ((driver_version & 0x0000FF00) >> 8) << "."
-      << ((driver_version & 0x000000FF) >> 0) << "\n";
-
-   os << std::hex;
-
+   os << "    - Driver v" << driver_version << "\n";
    os << "    - Board fpga firmware v" << ((firmware_version & 0xFF000000) >> 24) << "."
       << ((firmware_version & 0x00FF0000) >> 16) << "." << ((firmware_version & 0x0000FF00) >> 8)
       << "." << ((firmware_version & 0x000000FF) >> 0) << "\n";
