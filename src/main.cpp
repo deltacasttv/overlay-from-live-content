@@ -52,7 +52,7 @@ void waiting(Deltacast::SharedResources& shared_resources)
         && !shared_resources.synchronization.signal_has_changed)
     {
         std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        std::cout << "\r" 
+        std::cout << "\r"
             << std::string(++number_of_dots, '.')
             << std::string(max_number_of_dots - number_of_dots, ' ')
             << std::flush;
@@ -87,7 +87,7 @@ int main(int argc, char** argv)
     signal(SIGINT, on_close);
 
     std::cout << "OverlayFromLiveContent (" << VERSTRING << ")" << std::endl;
-    
+
     std::cout << std::endl;
 
     std::cout << "VideoMaster: " << Deltacast::Helper::get_api_version() << std::endl;
@@ -110,117 +110,104 @@ int main(int argc, char** argv)
     {
         shared_resources.reset();
 
+        // identify connector type
+        shared_resources.rx_video_info = std::move(device->factory_create_video_information_for_channel(rx_stream_id, Deltacast::Device::Direction::RX));
+        shared_resources.tx_video_info = std::move(device->factory_create_video_information_for_channel(tx_stream_id, Deltacast::Device::Direction::TX));
+        std::cout << "Input  connector : " << *shared_resources.rx_video_info << std::endl;
+        std::cout << "Output connector : " << *shared_resources.tx_video_info << std::endl;
+
         std::cout << "Waiting for incoming signal" << std::endl;
         if (!device->wait_for_incoming_signal(rx_stream_id, shared_resources.synchronization.stop_is_requested))
             return -1;
-        std::cout << "Getting incoming signal information" << std::endl;
-        shared_resources.signal_info = device->get_incoming_signal_information(rx_stream_id);
-
-        std::cout << "Incoming signal information:" << std::endl;
-        std::cout << "\t" << "video standard: " << Deltacast::Helper::enum_to_string(shared_resources.signal_info.video_standard) << std::endl;
-        std::cout << "\t" << "clock divisor: " << Deltacast::Helper::enum_to_string(shared_resources.signal_info.clock_divisor) << std::endl;
-        std::cout << "\t" << "interface: " << Deltacast::Helper::enum_to_string(shared_resources.signal_info.interface) << std::endl;
-
-        Deltacast::DecodedSignalInformation decoded_signal_info = Deltacast::decode(shared_resources.signal_info);
-        std::cout << "Decoded signal information:" << std::endl;
-        std::cout << "\t" << "width: " << decoded_signal_info.width << std::endl;
-        std::cout << "\t" << "height: " << decoded_signal_info.height << std::endl;
-        std::cout << "\t" << "progressive: " << (decoded_signal_info.progressive ? "true" : "false") << std::endl;
-        std::cout << "\t" << "framerate: " << decoded_signal_info.framerate << std::endl;
-    
-        std::cout << std::endl;
-
-        auto window_refresh_interval = 10ms;
-        RxRenderer renderer("Live Content", decoded_signal_info.width / 2, decoded_signal_info.height / 2, window_refresh_interval.count());
-        if (renderer_enabled)
-        {
-            std::cout << "Initializing live content rendering window" << std::endl;
-            if (!renderer.init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
-                return -1;
-    
-            std::cout << std::endl;
-        }
 
         std::cout << "Configuring genlock" << std::endl;
-        if (!device->configure_genlock(rx_stream_id, shared_resources.signal_info))
+        if (!device->configure_sync(rx_stream_id, shared_resources.rx_video_info))
             return -1;
         std::cout << "Waiting for genlock locked" << std::endl;
-        if (!device->wait_genlock_locked(shared_resources.synchronization.stop_is_requested))
+        if (!device->wait_sync_locked(shared_resources.synchronization.stop_is_requested, shared_resources.rx_video_info))
             return -1;
-
-        std::cout << std::endl;
 
         if (overlay_enabled)
         {
             std::cout << "Configuring keyer" << std::endl;
             if (!device->configure_keyer(rx_stream_id, tx_stream_id))
                 return -1;
-
-            std::cout << std::endl;
         }
 
+        std::cout << "Disabling loopback" << std::endl;
+        device->disable_loopback(rx_stream_id);
+
         std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
-        auto rx_stream = Deltacast::RxStream::create(*device, rx_stream_id
+        auto rx_stream = Deltacast::RxStream::create(*device, rx_stream_id, shared_resources.rx_video_info
                                                     , allocate_buffer, deallocate_buffer);
         if (!rx_stream)
             return -1;
 
+        std::cout << "Configuring RX stream" << std::endl;
+        if (!rx_stream->configure(shared_resources.rx_video_info, overlay_enabled))
+            return -1;
+
+        std::cout << "Incoming video format" << std::endl << rx_stream->video_format() << std::endl;
+        auto window_refresh_interval = 10ms;
+        RxRenderer renderer("Live Content", rx_stream->video_format().width / 2, rx_stream->video_format().height / 2, window_refresh_interval.count());
+        if (renderer_enabled)
+        {
+            std::cout << "Initializing live content rendering window" << std::endl;
+            if (!renderer.init(rx_stream->video_format().width, rx_stream->video_format().height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
+                return -1;
+
+            std::cout << std::endl;
+        }
+
         std::cout << "Opening TX stream " << tx_stream_id << "" << std::endl;
-        auto tx_stream = Deltacast::TxStream::create(*device, tx_stream_id
+        auto tx_stream = Deltacast::TxStream::create(*device, tx_stream_id, shared_resources.tx_video_info
                                                     , allocate_buffer, deallocate_buffer
                                                     , (overlay_enabled ? generate_overlay : generate_frame));
         if (!tx_stream)
             return -1;
-                    
-        std::cout << "Configuring and starting RX stream" << std::endl;
-        if (!rx_stream->configure(shared_resources.signal_info, overlay_enabled))
-            return -1;
+
+        std::cout << "Starting RX stream" << std::endl;
         if (!rx_stream->start(shared_resources))
             return -1;
 
         std::cout << "Configuring and starting TX stream" << std::endl;
-        if (!tx_stream->configure(shared_resources.signal_info, overlay_enabled))
+        auto props = rx_stream->get_stream_properties(shared_resources.rx_video_info);
+        if (!tx_stream->configure(shared_resources.tx_video_info, overlay_enabled, props))
             return -1;
+        std::cout << "Outgoing video format" << std::endl << tx_stream->video_format() << std::endl;
         if (!tx_stream->start(shared_resources))
             return -1;
-    
-        std::cout << std::endl;
-
-        std::cout << "Disabling loopback" << std::endl;
-        device->disable_loopback(rx_stream_id);
-    
-        std::cout << std::endl;
 
         if (renderer_enabled)
         {
             std::cout << "Starting live content rendering" << std::endl;
             renderer.start(shared_resources);
-    
+
             std::cout << std::endl;
         }
 
         std::cout << "Press CTRL+C to stop" << std::endl;
         waiting(shared_resources);
-    
+
         std::cout << std::endl;
 
         if (renderer_enabled)
         {
             std::cout << "Stopping live content rendering" << std::endl;
             renderer.stop();
-    
+
         std::cout << std::endl;
         }
 
         std::cout << "Enabling loopback" << std::endl;
         device->enable_loopback(rx_stream_id);
-    
+
         std::cout << std::endl;
 
         std::cout << "Stopping RX and TX loops" << std::endl;
         tx_stream->stop();
         rx_stream->stop();
-    
+
         std::cout << std::endl;
     }
 

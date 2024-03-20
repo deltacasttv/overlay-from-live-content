@@ -21,8 +21,10 @@
 #include <thread>
 
 #include "VideoMasterAPIHelper/handle_manager.hpp"
-#include "device.hpp"
+#include "VideoMasterAPIHelper/VideoInformation/core.hpp"
+
 #include "shared_resources.hpp"
+#include "device.hpp"
 
 #include "VideoMasterHD_ApplicationBuffers.h"
 
@@ -36,10 +38,10 @@ namespace Deltacast
 
         virtual ~Stream();
 
-        virtual bool configure(SignalInformation signal_info, bool overlay_enabled) = 0;
-        
         bool start(SharedResources& shared_resources);
         bool stop();
+        Helper::VideoFormat video_format() const { return _video_format; }
+        std::unordered_map<uint32_t, uint32_t> get_stream_properties(std::unique_ptr<Helper::VideoInformation>& video_info) { return video_info->get_stream_properties_values(handle()); }
 
     protected:
         Device& _device;
@@ -74,13 +76,14 @@ namespace Deltacast
         virtual bool loop(SharedResources& shared_resources);
         virtual bool loop_iteration(SharedResources& shared_resources) = 0;
 
-        bool configure_application_buffers();
+        bool configure_application_buffers(std::unique_ptr<Helper::VideoInformation>& video_info);
         bool uninit_application_buffers();
-        virtual bool on_start() { return true; };
+        virtual bool on_start(SharedResources& shared_resources) { return true; };
 
         const std::array<HANDLE, _buffer_queue_depth>& slots() const { return _slots; };
         std::pair<HANDLE, Helper::ApiSuccess> pop_slot();
         Helper::ApiSuccess push_slot(HANDLE slot_handle);
+        Helper::VideoFormat _video_format = {};
 
     private:
         std::unique_ptr<Helper::StreamHandle> _stream_handle;
@@ -90,8 +93,7 @@ namespace Deltacast
 
         std::thread _loop_thread;
 
-        using SlotBufferDescriptors = std::array<VHD_APPLICATION_BUFFER_DESCRIPTOR, NB_VHD_SDI_BUFFERTYPE>;
-        std::array<SlotBufferDescriptors, _buffer_queue_depth> _application_buffers;
+        std::array<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>, _buffer_queue_depth> _application_buffers;
         std::array<HANDLE, _buffer_queue_depth> _slots;
 
         uint64_t _number_of_pushed_slots = 0;

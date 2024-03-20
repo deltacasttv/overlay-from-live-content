@@ -15,9 +15,10 @@
 
 #pragma once
 
-#include "device.hpp"
-#include "stream.hpp"
 #include "shared_resources.hpp"
+#include "stream.hpp"
+
+#include <unordered_map>
 
 namespace Deltacast
 {
@@ -36,12 +37,14 @@ namespace Deltacast
         }
 
     public:
-        static std::unique_ptr<RxStream> create(Device& device, int channel_index, BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct);
+        static std::unique_ptr<RxStream> create(Device& device, int channel_index,
+                                                std::unique_ptr<Helper::VideoInformation>& video_info,
+                                                BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct);
 
-        bool configure(SignalInformation signal_info, bool overlay_enabled) override;
+        bool configure(std::unique_ptr<Helper::VideoInformation>& video_info, bool overlay_enabled);
 
     private:
-        bool on_start() override;
+        bool on_start(SharedResources& shared_resources) override;
 
         bool loop_iteration(SharedResources& shared_resources) override;
     };
