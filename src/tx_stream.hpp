@@ -25,32 +25,26 @@ namespace Deltacast
 {
     class TxStream : public Stream
     {
-    public:
-        using Processor = std::function<void(const uint8_t* input_buffer, uint32_t input_buffer_size, uint8_t* output_buffer, uint32_t output_buffer_size)>;
-
     private:
         TxStream() = delete;
         TxStream(const TxStream&) = delete;
         TxStream& operator=(const TxStream&) = delete;
 
         TxStream(Device& device, int channel_index, std::unique_ptr<Helper::StreamHandle> stream_handle
-                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
-                , Processor process_fct)
+                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
             : Stream(device, std::string("TX") + std::to_string(channel_index), channel_index, std::move(stream_handle)
                     , buffer_allocation_fct, buffer_deallocation_fct, VHD_WaitSlotSent, VHD_QueueOutSlot)
-            , _process_fct(process_fct)
         {
         }
 
     public:
         static std::unique_ptr<TxStream> create(Device& device, int channel_index
-                                                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct
-                                                , Processor process_fct);
+                                                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct);
 
         bool configure(SignalInformation signal_info, bool overlay_enabled) override;
 
     private:
-        Processor _process_fct;
+        bool on_start(SharedResources& shared_resources) override;
 
         bool loop_iteration(SharedResources& shared_resources) override;
     };

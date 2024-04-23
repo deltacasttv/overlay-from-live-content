@@ -1,8 +1,16 @@
+# Unreleased
+
+## Added
+
+- Better synchronisatin mechanism to handle unrestricted processing time
+
+
 # 1.0.2
 
 ## Added
 
 - Parameter for handling maximum desired input to output latency (default is 2)
+
 
 # 1.0.1
 

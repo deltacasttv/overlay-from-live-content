@@ -52,9 +52,9 @@ bool RxRenderer::monitor(int image_width, int image_height, Deltacast::VideoView
     return true;
 }
 
-bool RxRenderer::start(Deltacast::SharedResources& shared_resources)
+bool RxRenderer::start()
 {
-    _rendering_loop_thread = std::thread(&RxRenderer::render_loop, this, std::ref(shared_resources));
+    _rendering_loop_thread = std::thread(&RxRenderer::render_loop, this);
 
     return true;
 }
@@ -72,36 +72,34 @@ bool RxRenderer::stop()
     return true;
 }
 
-void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
+void RxRenderer::update_buffer(uint8_t* buffer, uint32_t buffer_size)
 {
-    std::unique_ptr<uint8_t> to_render_data = nullptr;
-    uint64_t to_render_data_size = 0;
-    
+    std::lock_guard<std::mutex> lock(_buffer_mutex);
+
+    if (!_buffer)
+        _buffer.reset(new uint8_t[buffer_size]);
+
+    memcpy(_buffer.get(), buffer, buffer_size);
+}
+
+void RxRenderer::render_loop()
+{
     while (!_should_stop)
     {
-        {
-            auto lock = shared_resources.synchronization.lock();
-
-            if (shared_resources.buffer && shared_resources.buffer_size)
-            {
-                if (!to_render_data || (to_render_data_size != shared_resources.buffer_size))
-                {
-                    to_render_data.reset(new uint8_t[shared_resources.buffer_size]);
-                    to_render_data_size = shared_resources.buffer_size;
-                }
-
-                memcpy(to_render_data.get(), (uint8_t*)shared_resources.buffer, to_render_data_size);
-            }
-        }
-
         uint8_t* monitor_data = nullptr;
         uint64_t monitor_data_size = 0;
         if (_monitor.lock_data(&monitor_data, &monitor_data_size)) 
         {
-            if (to_render_data && monitor_data && (monitor_data_size == shared_resources.buffer_size) && shared_resources.buffer)
-                memcpy(monitor_data, to_render_data.get(), monitor_data_size);
+            if (monitor_data && monitor_data_size)
+            {
+                std::lock_guard<std::mutex> lock(_buffer_mutex);
+                if (_buffer)
+                    memcpy(monitor_data, _buffer.get(), monitor_data_size);
+            }
 
             _monitor.unlock_data();
         }
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(_framerate_ms));
     }
 }

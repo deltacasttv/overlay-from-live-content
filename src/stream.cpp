@@ -29,7 +29,7 @@ bool Deltacast::Stream::start(SharedResources& shared_resources)
     if (!configure_application_buffers())
         return false;
     
-    if (!on_start())
+    if (!on_start(shared_resources))
         return false;
 
     ApiSuccess api_success{VHD_StartStream(*handle())};
@@ -52,6 +52,8 @@ bool Deltacast::Stream::stop()
     _should_stop = true;
     if (_loop_thread.joinable())
         _loop_thread.join();
+
+    on_stop();
 
     VHD_StopStream(*handle());
 
