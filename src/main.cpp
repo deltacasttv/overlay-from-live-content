@@ -20,7 +20,7 @@
 
 #include "VideoMasterHD_Core.h"
 #include "VideoMasterHD_Sdi.h"
-#include "VideoMasterHD_Sdi_Keyer.h"
+#include "VideoMasterHD_Keyer.h"
 
 #include "version.h"
 
@@ -130,7 +130,7 @@ int main(int argc, char** argv)
         if (overlay_enabled)
         {
             std::cout << "Configuring keyer" << std::endl;
-            if (!device->configure_keyer(rx_stream_id, tx_stream_id))
+            if (!device->configure_keyer(rx_stream_id, tx_stream_id, shared_resources.rx_video_info))
                 return -1;
         }
 

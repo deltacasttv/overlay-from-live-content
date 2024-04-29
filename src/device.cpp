@@ -19,7 +19,7 @@
 #include <string>
 #include <thread>
 
-#include "VideoMasterHD_Sdi_Keyer.h"
+#include "VideoMasterHD_Keyer.h"
 
 #include "VideoMasterAPIHelper/handle_manager.hpp"
 
@@ -52,7 +52,8 @@ const std::unordered_map<uint32_t, VHD_CORE_BOARDPROPERTY> id_to_active_loopback
    { 0, VHD_CORE_BP_ACTIVE_LOOPBACK_0 }
 };
 const std::unordered_map<uint32_t, VHD_CORE_BOARDPROPERTY> id_to_firmware_loopback_prop = {
-   { 0, VHD_CORE_BP_FIRMWARE_LOOPBACK_0 }
+   { 0, VHD_CORE_BP_FIRMWARE_LOOPBACK_0 },
+   { 1, VHD_CORE_BP_FIRMWARE_LOOPBACK_1 }
 };
 
 const std::unordered_map<uint32_t, VHD_CORE_BOARDPROPERTY> id_to_rx_status_prop = {
@@ -231,7 +232,7 @@ Deltacast::Device::factory_create_video_information_for_channel(int index, Direc
    return _video_information;
 }
 
-bool Deltacast::Device::configure_keyer(int rx_index, int tx_index)
+bool Deltacast::Device::configure_keyer(int rx_index, int tx_index, std::unique_ptr<Helper::VideoInformation>& video_info)
 {
    if ((id_to_keyer_rx_input.find(rx_index) == id_to_keyer_rx_input.end()) ||
        (id_to_keyer_tx_input.find(tx_index) == id_to_keyer_tx_input.end()) ||
@@ -240,25 +241,42 @@ bool Deltacast::Device::configure_keyer(int rx_index, int tx_index)
        (id_to_keyer_anc_output_prop.find(tx_index) == id_to_keyer_anc_output_prop.end()))
       return false;
 
+   // get the right keyer properties according to board and input output connectors
+   auto keyer_props = video_info->get_keyer_properties(handle());
+   if ((keyer_props.find(VHD_KEYER_BP_INPUT_A) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_INPUT_B) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_INPUT_K) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_ALPHACLIP_MIN) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_ALPHACLIP_MAX) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_ALPHABLEND_FACTOR) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_ALPHABLEND_FACTOR) == keyer_props.end()) ||
+       (keyer_props.find(VHD_KEYER_BP_ENABLE) == keyer_props.end())) {
+      std::cout << "ERROR: Missing keyer properties" << std::endl;
+      return false;
+       }
+
    ApiSuccess api_success;
-   if (!(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_INPUT_A,
+   if (!(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(),
+                                                        keyer_props.at(VHD_KEYER_BP_INPUT_A),
                                                         id_to_keyer_rx_input.at(rx_index)) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_INPUT_B,
+       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(),
+                                                        keyer_props.at(VHD_KEYER_BP_INPUT_B),
                                                         id_to_keyer_tx_input.at(tx_index)) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_INPUT_K,
+       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(),
+                                                        keyer_props.at(VHD_KEYER_BP_INPUT_K),
                                                         id_to_keyer_tx_input.at(tx_index)) }) ||
        !(api_success = ApiSuccess{ VHD_SetBoardProperty(
              *handle(), id_to_keyer_video_output_prop.at(tx_index), VHD_KOUTPUT_KEYER) }) ||
        !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(),
                                                         id_to_keyer_anc_output_prop.at(tx_index),
                                                         id_to_keyer_rx_output.at(rx_index)) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ALPHACLIP_MIN,
+       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), keyer_props.at(VHD_KEYER_BP_ALPHACLIP_MIN),
                                                         0) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ALPHACLIP_MAX,
+       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), keyer_props.at(VHD_KEYER_BP_ALPHACLIP_MAX),
                                                         1020) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ALPHABLEND_FACTOR,
+       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), keyer_props.at(VHD_KEYER_BP_ALPHABLEND_FACTOR),
                                                         1023) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), VHD_KEYER_BP_ENABLE, TRUE) }))
+       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), keyer_props.at(VHD_KEYER_BP_ENABLE), TRUE) }))
    {
       std::cout << "ERROR: Cannot configure keyer (" << api_success << ")" << std::endl;
       return false;
