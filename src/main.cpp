@@ -36,6 +36,10 @@
 
 #include <CLI/CLI.hpp>
 
+#include <chrono>
+#include <thread>
+#define sleep_ms(value) std::this_thread::sleep_for(std::chrono::milliseconds(value))
+
 Deltacast::SharedResources shared_resources;
 
 void on_close(int /*signal*/)
@@ -137,8 +141,6 @@ int main(int argc, char** argv)
                 return -1;
         }
 
-        std::cout << "Disabling loopback" << std::endl;
-        device->disable_loopback(rx_stream_id);
 
         std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
         auto rx_stream = Deltacast::RxStream::create(*device, rx_stream_id, shared_resources.rx_video_info
@@ -168,6 +170,11 @@ int main(int argc, char** argv)
                                                     , (overlay_enabled ? generate_overlay : generate_frame));
         if (!tx_stream)
             return -1;
+
+        std::cout << "Disabling loopback" << std::endl;
+        sleep_ms(200);
+        device->disable_loopback(rx_stream_id);
+        sleep_ms(200);
 
         std::cout << "Starting RX stream" << std::endl;
         if (!rx_stream->start(shared_resources))
@@ -203,7 +210,9 @@ int main(int argc, char** argv)
         }
 
         std::cout << "Enabling loopback" << std::endl;
+        sleep_ms(200);
         device->enable_loopback(rx_stream_id);
+        sleep_ms(200);
 
         std::cout << std::endl;
 
