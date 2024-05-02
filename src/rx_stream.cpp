@@ -39,7 +39,8 @@ const std::unordered_map<uint32_t, VHD_STREAMTYPE> id_to_stream_type = {
 
 std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device, int channel_index,
     std::unique_ptr<Helper::VideoInformation>& video_info,
-    BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
+    BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct,
+    bool auto_stream_reconfiguration_enabled)
 {
     if (id_to_stream_type.find(channel_index) == id_to_stream_type.end())
         return nullptr;
@@ -48,7 +49,7 @@ std::unique_ptr<Deltacast::RxStream> Deltacast::RxStream::create(Device& device,
     if (!stream_handle)
         return nullptr;
 
-    return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct));
+    return std::unique_ptr<RxStream>(new RxStream(device, channel_index, std::move(stream_handle), buffer_allocation_fct, buffer_deallocation_fct, auto_stream_reconfiguration_enabled));
 }
 
 bool Deltacast::RxStream::configure(std::unique_ptr<Helper::VideoInformation>& video_info, bool /*overlay_enabled*/)
@@ -118,15 +119,18 @@ bool Deltacast::RxStream::loop_iteration(SharedResources& shared_resources)
         }
     );
 
-    // first re auto detect the stream properties
-    shared_resources.rx_video_info->get_stream_properties_values(handle());
-    // then compare them to the ones we have
-    auto video_format = shared_resources.rx_video_info->get_video_format(handle()).value();
-
-    if (video_format != _video_format)
+    if (auto_stream_reconfiguration_enabled)
     {
-        shared_resources.synchronization.signal_has_changed = true;
-        return false;
+        // first re auto detect the stream properties
+        shared_resources.rx_video_info->get_stream_properties_values(handle());
+        // then compare them to the ones we have
+        auto video_format = shared_resources.rx_video_info->get_video_format(handle()).value();
+
+        if (video_format != _video_format)
+        {
+            shared_resources.synchronization.signal_has_changed = true;
+            return false;
+        }
     }
 
     VHD_GetSlotBuffer(slot_handle, shared_resources.rx_video_info->get_buffer_type(), &shared_resources.buffer, &shared_resources.buffer_size);

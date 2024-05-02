@@ -1,3 +1,10 @@
+# 1.0.3
+
+## Added
+
+- HDMI support
+- auto-stream-reconfiguration option
+
 # 1.0.2
 
 ## Added

@@ -73,6 +73,7 @@ int main(int argc, char** argv)
     int tx_stream_id = 0;
     bool overlay_enabled = false;
     bool renderer_enabled = false;
+    bool auto_stream_reconfiguration_enabled;
     shared_resources.maximum_latency = 2;
 
     CLI::App app{"Generates some content from input and sends it to output"};
@@ -81,6 +82,8 @@ int main(int argc, char** argv)
     app.add_option("-o,--output", tx_stream_id, "ID of the output connector to use");
     app.add_flag("--overlay,!--no-overlay", overlay_enabled, "Activates overlay on the output stream");
     app.add_flag("--renderer,!--no-renderer", renderer_enabled, "Activates rendering of the live input stream");
+    app.add_flag("--auto-stream-reconfiguration,!--no-auto-stream-reconfiguration", auto_stream_reconfiguration_enabled,
+    "Activates the automatic reconfiguration of the stream when the input signal changes, not recommended for HDMI devices.");
     app.add_option("-l,--maximum-latency", shared_resources.maximum_latency, "Maximum desired latency in frames between input and output");
     CLI11_PARSE(app, argc, argv);
 
@@ -139,7 +142,7 @@ int main(int argc, char** argv)
 
         std::cout << "Opening RX stream " << rx_stream_id << "" << std::endl;
         auto rx_stream = Deltacast::RxStream::create(*device, rx_stream_id, shared_resources.rx_video_info
-                                                    , allocate_buffer, deallocate_buffer);
+                                                    , allocate_buffer, deallocate_buffer, auto_stream_reconfiguration_enabled);
         if (!rx_stream)
             return -1;
 

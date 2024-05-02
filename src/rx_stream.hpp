@@ -29,17 +29,21 @@ namespace Deltacast
         RxStream(const RxStream&) = delete;
         RxStream& operator=(const RxStream&) = delete;
 
+        bool auto_stream_reconfiguration_enabled = false;
+
         RxStream(Device& device, int channel_index, std::unique_ptr<Helper::StreamHandle> stream_handle
-                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct)
+                , BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct, bool auto_stream_reconfiguration_enabled)
             : Stream(device, std::string("RX") + std::to_string(channel_index), channel_index, std::move(stream_handle)
                     , buffer_allocation_fct, buffer_deallocation_fct, VHD_WaitSlotFilled, VHD_QueueInSlot)
+            , auto_stream_reconfiguration_enabled(auto_stream_reconfiguration_enabled)
         {
         }
 
     public:
         static std::unique_ptr<RxStream> create(Device& device, int channel_index,
                                                 std::unique_ptr<Helper::VideoInformation>& video_info,
-                                                BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct);
+                                                BufferAllocate buffer_allocation_fct, BufferDeallocate buffer_deallocation_fct,
+                                                bool auto_stream_reconfiguration_enabled = false);
 
         bool configure(std::unique_ptr<Helper::VideoInformation>& video_info, bool overlay_enabled);
 
