@@ -267,9 +267,6 @@ bool Deltacast::Device::configure_keyer(int rx_index, int tx_index, std::unique_
                                                         id_to_keyer_tx_input.at(tx_index)) }) ||
        !(api_success = ApiSuccess{ VHD_SetBoardProperty(
              *handle(), id_to_keyer_video_output_prop.at(tx_index), VHD_KOUTPUT_KEYER) }) ||
-       !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(),
-                                                        id_to_keyer_anc_output_prop.at(tx_index),
-                                                        id_to_keyer_rx_output.at(rx_index)) }) ||
        !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), keyer_props.at(VHD_KEYER_BP_ALPHACLIP_MIN),
                                                         0) }) ||
        !(api_success = ApiSuccess{ VHD_SetBoardProperty(*handle(), keyer_props.at(VHD_KEYER_BP_ALPHACLIP_MAX),
