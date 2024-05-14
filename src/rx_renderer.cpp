@@ -31,9 +31,11 @@ RxRenderer::~RxRenderer()
     stop();
 }
 
-bool RxRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool RxRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format, bool progressive)
 {
     _monitor_thread = std::thread(&RxRenderer::monitor, this, image_width, image_height, input_format);
+    _progressive = progressive;
+    _image_height = image_height;
 
     return true;
 }
@@ -74,7 +76,7 @@ bool RxRenderer::stop()
 
 void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
 {
-    std::unique_ptr<uint8_t> to_render_data = nullptr;
+    std::unique_ptr<uint8_t[]> to_render_data = nullptr;
     uint64_t to_render_data_size = 0;
     
     while (!_should_stop)
@@ -90,7 +92,18 @@ void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
                     to_render_data_size = shared_resources.buffer_size;
                 }
 
-                memcpy(to_render_data.get(), (uint8_t*)shared_resources.buffer, to_render_data_size);
+                if (_progressive) {
+                    memcpy(to_render_data.get(), (uint8_t*)shared_resources.buffer, to_render_data_size);
+                } else {
+                    const int per_line = to_render_data_size / _image_height;
+                    for (int i = 0; i < _image_height / 2; ++i) {
+                        memcpy(to_render_data.get() + (i * 2) * per_line, (uint8_t*)shared_resources.buffer + i * per_line, per_line);
+                    }
+                    const int interlace_offset = per_line * (_image_height / 2);
+                    for (int i = 0; i < _image_height / 2; ++i) {
+                        memcpy(to_render_data.get() + (i * 2 + 1) * per_line, (uint8_t*)shared_resources.buffer + i * per_line + interlace_offset, per_line);
+                    }
+                }
             }
         }
 
