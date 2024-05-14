@@ -74,7 +74,7 @@ bool RxRenderer::stop()
 
 void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
 {
-    std::unique_ptr<uint8_t> to_render_data = nullptr;
+    std::unique_ptr<uint8_t[]> to_render_data = nullptr;
     uint64_t to_render_data_size = 0;
     
     while (!_should_stop)
