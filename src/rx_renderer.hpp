@@ -31,7 +31,7 @@ public:
     RxRenderer(RxRenderer&&) = delete;
     RxRenderer& operator=(RxRenderer&&) = delete;
 
-    bool init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format);
+    bool init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format, bool progressive);
     bool start(Deltacast::SharedResources& shared_resources);
     bool stop();
 
@@ -40,6 +40,8 @@ private:
     int _window_width;
     int _window_height;
     int _framerate_ms;
+    bool _progressive;
+    int _image_height;
 
     Deltacast::VideoViewer _monitor;
     std::thread _monitor_thread;

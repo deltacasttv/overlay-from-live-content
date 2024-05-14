@@ -135,7 +135,7 @@ int main(int argc, char** argv)
         if (renderer_enabled)
         {
             std::cout << "Initializing live content rendering window" << std::endl;
-            if (!renderer.init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8))
+            if (!renderer.init(decoded_signal_info.width, decoded_signal_info.height, Deltacast::VideoViewer::InputFormat::bgr_444_8, decoded_signal_info.progressive))
                 return -1;
     
             std::cout << std::endl;
