@@ -2,8 +2,8 @@ cmake_minimum_required(VERSION 3.19)
 include(FetchContent)
 
 configure_file(
-    ${CMAKE_SOURCE_DIR}/src/version.h.in
-    ${CMAKE_SOURCE_DIR}/src/version.h
+    ${CMAKE_SOURCE_DIR}/src/version.hpp.in
+    ${CMAKE_SOURCE_DIR}/src/version.hpp
     @ONLY
 )
 

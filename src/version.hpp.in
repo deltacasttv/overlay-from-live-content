@@ -15,8 +15,8 @@
 
 #pragma once
 
-#define VERMAJOR         1
-#define VERMINOR         0
-#define VERPATCH         2
+#define VERMAJOR         @CMAKE_PROJECT_VERSION_MAJOR@
+#define VERMINOR         @CMAKE_PROJECT_VERSION_MINOR@
+#define VERPATCH         @CMAKE_PROJECT_VERSION_PATCH@
 
-#define VERSTRING        "1.0.2-1-g0c0a97c"
+#define VERSTRING        "@GIT_VERSION@"

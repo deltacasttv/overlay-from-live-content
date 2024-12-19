@@ -25,7 +25,7 @@
 #include <VideoMasterCppApi/api.hpp>
 #include <VideoMasterCppApi/board/board.hpp>
 
-#include "version.h"
+#include "version.hpp"
 #include "helper.hpp"
 #include "shared_resources.hpp"
 #include "windowed_renderer.hpp"
@@ -187,7 +187,6 @@ int main(int argc, char** argv)
                 }
                 if (Application::Helper::detect_information(rx_tech_stream) != signal_information)
                 {
-                    std::cout << "Signal has changed, stopping the application..." << std::endl;
                     shared_resources.synchronization.incoming_signal_changed = true;
                     continue;
                 }
@@ -213,7 +212,6 @@ int main(int argc, char** argv)
         std::cerr << e.logs() << std::endl;
     }
 
-    std::cout << "Exiting..." << std::endl;
     return 0;
 }
 
