@@ -187,6 +187,7 @@ int main(int argc, char** argv)
                 }
                 if (Application::Helper::detect_information(rx_tech_stream) != signal_information)
                 {
+                    std::cout << "Signal has changed, stopping the application..." << std::endl;
                     shared_resources.synchronization.incoming_signal_changed = true;
                     continue;
                 }
@@ -212,6 +213,7 @@ int main(int argc, char** argv)
         std::cerr << e.logs() << std::endl;
     }
 
+    std::cout << "Exiting..." << std::endl;
     return 0;
 }
 
@@ -220,7 +222,8 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
     auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
     rx_stream.start();
 
-    while (!shared_resources.synchronization.stop_is_requested)
+    while (!shared_resources.synchronization.stop_is_requested
+        && !shared_resources.synchronization.incoming_signal_changed)
     {
         {
             std::unique_ptr<Slot> slot = nullptr;
@@ -236,6 +239,7 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
 
             shared_resources.synchronization.notify_ready_to_process();
             while (!shared_resources.synchronization.stop_is_requested
+                && !shared_resources.synchronization.incoming_signal_changed
                 && !shared_resources.synchronization.wait_until_processed()) {}
         }
         
@@ -266,7 +270,8 @@ bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Application::Proce
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
     tx_stream.start();
 
-    while (!shared_resources.synchronization.stop_is_requested)
+    while (!shared_resources.synchronization.stop_is_requested
+        && !shared_resources.synchronization.incoming_signal_changed)
     {
         std::unique_ptr<Slot> slot = nullptr;
         try { slot = tx_stream.pop_slot(); }
@@ -301,8 +306,11 @@ bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& s
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
 
-    while (!shared_resources.synchronization.stop_is_requested && !shared_resources.synchronization.wait_until_ready_to_process()) {}
-    if (shared_resources.synchronization.stop_is_requested)
+    while (!shared_resources.synchronization.stop_is_requested
+        && !shared_resources.synchronization.incoming_signal_changed
+        && !shared_resources.synchronization.wait_until_ready_to_process()) {}
+    if (shared_resources.synchronization.stop_is_requested
+        || shared_resources.synchronization.incoming_signal_changed)
         return false;
 
     auto buffer_queue_filling = tx_stream.buffer_queue().filling();
@@ -311,7 +319,9 @@ bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& s
         for (auto i = 0; i < buffer_queue_filling - (shared_resources.maximum_latency - 2); ++i)
         {
             shared_resources.synchronization.notify_processing_finished();
-            while (!shared_resources.synchronization.stop_is_requested && !shared_resources.synchronization.wait_until_ready_to_process()) {}
+            while (!shared_resources.synchronization.stop_is_requested 
+                && !shared_resources.synchronization.incoming_signal_changed
+                && !shared_resources.synchronization.wait_until_ready_to_process()) {}
         }
     }
 
