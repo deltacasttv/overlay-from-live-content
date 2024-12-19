@@ -43,7 +43,7 @@ void on_close(int /*signal*/)
 }
 
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources);
-bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Processor processor, Deltacast::SharedResources& shared_resources);
+bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources);
 
 int main(int argc, char** argv)
 {
@@ -167,7 +167,7 @@ int main(int argc, char** argv)
                 std::get<SdiStream>(tx_tech_stream).genlock().enable();
             Application::Helper::configure_stream(tx_tech_stream, signal_information);
             std::cout << "Starting TX stream..." << std::endl;
-            std::thread tx_thread(tx_loop, std::ref(tx_tech_stream), (overlay_enabled ? generate_overlay : generate_frame), std::ref(shared_resources));
+            std::thread tx_thread(tx_loop, std::ref(tx_tech_stream), (overlay_enabled ? Application::Processing::overlay : Application::Processing::non_overlay), std::ref(shared_resources));
 
             if (renderer_enabled)
             {
@@ -259,9 +259,9 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
     return true;
 }
 
-bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Processor processor, Deltacast::SharedResources& shared_resources);
+bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources);
 
-bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Processor processor, Deltacast::SharedResources& shared_resources)
+bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources)
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
     tx_stream.start();
@@ -297,7 +297,7 @@ bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Processor processo
     return true;
 }
 
-bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Processor processor, Deltacast::SharedResources& shared_resources)
+bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources)
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
 

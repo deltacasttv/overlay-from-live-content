@@ -21,29 +21,32 @@
 #include <Windows.h>
 #endif
 
-VHD_APPLICATION_BUFFER_DESCRIPTOR allocate_buffer(ULONG buffer_size)
+namespace Application::Allocation
 {
-    VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor;
-    buffer_descriptor.Size = sizeof(buffer_descriptor);
-    buffer_descriptor.RDMAEnabled = FALSE;
+    VHD_APPLICATION_BUFFER_DESCRIPTOR allocate_buffer(ULONG buffer_size)
+    {
+        VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor;
+        buffer_descriptor.Size = sizeof(buffer_descriptor);
+        buffer_descriptor.RDMAEnabled = FALSE;
 
-#ifdef WIN32 
-    buffer_descriptor.pBuffer = (UBYTE*)(VirtualAlloc(NULL, buffer_size, MEM_COMMIT | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE));
-#else
-    int error = posix_memalign((void**)&buffer_descriptor.pBuffer, 4096, buffer_size);
-    if (error != 0)
-        std::cout << "posix_memalign failed to alloc " << buffer_size << " bytes (error = " << error << ")" << std::endl;
-#endif
+    #ifdef WIN32 
+        buffer_descriptor.pBuffer = (UBYTE*)(VirtualAlloc(NULL, buffer_size, MEM_COMMIT | MEM_TOP_DOWN, PAGE_EXECUTE_READWRITE));
+    #else
+        int error = posix_memalign((void**)&buffer_descriptor.pBuffer, 4096, buffer_size);
+        if (error != 0)
+            std::cout << "posix_memalign failed to alloc " << buffer_size << " bytes (error = " << error << ")" << std::endl;
+    #endif
 
-    return buffer_descriptor;
-}
+        return buffer_descriptor;
+    }
 
-void deallocate_buffer(VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor)
-{
-#ifdef WIN32 
-    VirtualFree(buffer_descriptor.pBuffer, 0, MEM_RELEASE);
-#else
-    free(buffer_descriptor.pBuffer);
-#endif
-    buffer_descriptor.pBuffer = nullptr;
+    void deallocate_buffer(VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor)
+    {
+    #ifdef WIN32 
+        VirtualFree(buffer_descriptor.pBuffer, 0, MEM_RELEASE);
+    #else
+        free(buffer_descriptor.pBuffer);
+    #endif
+        buffer_descriptor.pBuffer = nullptr;
+    }
 }
