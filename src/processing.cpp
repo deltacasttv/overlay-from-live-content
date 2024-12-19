@@ -55,5 +55,5 @@ void generate_overlay(const uint8_t* buffer, uint32_t buffer_size, uint8_t* over
 
 void generate_frame(const uint8_t* buffer, uint32_t buffer_size, uint8_t* output_buffer, uint32_t output_buffer_size)
 {
-    memcpy(output_buffer, buffer, output_buffer_size);
+    memcpy(output_buffer, buffer, output_buffer_size/2);
 }

@@ -1,41 +1,15 @@
-.idea/
-.vs/
-.vscode/
-.devcontainer/
+# Ignore build directories
+/build/
+/out/
+/bin/
+/lib/
 
-x64/
-Win32/
-Debug/
-Release/
-Debug_Static/
-Release_Static/
-objfre_wlh_amd64/
-objchk_wlh_amd64/
-build*/
+# Ignore CMakePresets.json and CMakeUserPresets.json
+CMakePresets.json
+CMakeUserPresets.json
 
-*.o
-*.vcxproj.user
-_inc_*
-*.bin
-*.dll
-*.exp
-*.ilk
-*.lib
-*.pdb
-*.bkp
-*.log
-*.exe
-*.out
-*.tlog
-*.idb
-*.obj
-*.pmc
+# IDE
+/.vscode
 
-Debug/
-Release/
-Debug_Static/
-Release_Static/
-
-version.h
-
-deps
+# Project specific files
+/src/version.hpp

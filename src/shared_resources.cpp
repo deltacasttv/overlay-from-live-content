@@ -57,8 +57,7 @@ std::unique_lock<std::mutex> Deltacast::SharedResources::Synchronization::lock()
 void Deltacast::SharedResources::reset()
 {
     synchronization.stop_is_requested = false;
-    synchronization.signal_has_changed = false;
+    synchronization.incoming_signal_changed = false;
     buffer = nullptr;
     buffer_size = 0;
-    signal_info = {};
 }

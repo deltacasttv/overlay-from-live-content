@@ -1,0 +1,6 @@
+[submodule "deps/video-viewer"]
+	path = deps/video-viewer
+	url = https://github.com/deltacasttv/video-viewer
+[submodule "deps/cli11"]
+	path = deps/cli11
+	url = https://github.com/CLIUtils/CLI11.git
