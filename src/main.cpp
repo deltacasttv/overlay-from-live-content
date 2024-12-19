@@ -43,7 +43,7 @@ void on_close(int /*signal*/)
 }
 
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources);
-bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Deltacast::SharedResources& shared_resources);
+bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Processor processor, Deltacast::SharedResources& shared_resources);
 
 int main(int argc, char** argv)
 {
@@ -122,22 +122,29 @@ int main(int argc, char** argv)
 
             std::cout << std::endl;
 
-            // std::cout << "Configuring genlock" << std::endl;
-            // if (!device->configure_genlock(rx_stream_id, shared_resources.signal_info))
-            //     return -1;
-            // std::cout << "Waiting for genlock locked" << std::endl;
-            // if (!device->wait_genlock_locked(shared_resources.synchronization.stop_is_requested))
-            //     return -1;
-
+            if (board.has_sdi() && board.rx(rx_stream_id).has_sdi())
+            {
+                const auto& sdi_signal_info = std::get<Application::Helper::SdiSignalInformation>(signal_information);
+                std::cout << "Configuring genlock..." << std::endl;
+                board.sdi().genlock(0).set_source(VHD_GENLOCK_RX0);
+                board.sdi().genlock(0).set_clock_divisor(sdi_signal_info.clock_divisor);
+                board.sdi().genlock(0).set_video_standard(sdi_signal_info.video_standard);
+                std::cout << "Waiting for genlock locked..." << std::endl;
+                Application::Helper::wait_for_genlock(board.sdi().genlock(0), shared_resources.synchronization.stop_is_requested);
+            }
             std::cout << std::endl;
 
             if (overlay_enabled)
             {
-                // std::cout << "Configuring keyer" << std::endl;
-                // if (!device->configure_keyer(rx_stream_id, tx_stream_id))
-                //     return -1;
-
-                // std::cout << std::endl;
+                std::cout << "Configuring keyer..." << std::endl;
+                board.keyer(tx_stream_id).set_input_a(Application::Helper::rx_to_keyer_input(rx_stream_id));
+                board.keyer(tx_stream_id).set_input_b(Application::Helper::tx_to_keyer_input(tx_stream_id));
+                board.keyer(tx_stream_id).set_input_k(Application::Helper::tx_to_keyer_input(tx_stream_id));
+                board.keyer(tx_stream_id).set_video_output(VHD_KOUTPUT_KEYER);
+                board.keyer(tx_stream_id).set_alpha_clip_min_value(0);
+                board.keyer(tx_stream_id).set_alpha_clip_max_value(1020);
+                board.keyer(tx_stream_id).set_alpha_blend_factor(1023);
+                board.keyer(tx_stream_id).enable();
             }
 
             std::cout << "Opening TX" << tx_stream_id << " stream..." << std::endl;
@@ -160,7 +167,7 @@ int main(int argc, char** argv)
                 std::get<SdiStream>(tx_tech_stream).genlock().enable();
             Application::Helper::configure_stream(tx_tech_stream, signal_information);
             std::cout << "Starting TX stream..." << std::endl;
-            std::thread tx_thread(tx_loop, std::ref(tx_tech_stream), std::ref(shared_resources));
+            std::thread tx_thread(tx_loop, std::ref(tx_tech_stream), (overlay_enabled ? generate_overlay : generate_frame), std::ref(shared_resources));
 
             if (renderer_enabled)
             {
@@ -252,9 +259,9 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
     return true;
 }
 
-bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Deltacast::SharedResources& shared_resources);
+bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Processor processor, Deltacast::SharedResources& shared_resources);
 
-bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Deltacast::SharedResources& shared_resources)
+bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Processor processor, Deltacast::SharedResources& shared_resources)
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
     tx_stream.start();
@@ -265,7 +272,7 @@ bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Deltacast::SharedR
         try { slot = tx_stream.pop_slot(); }
         catch(const ApiException& e) { return e.error_code() == VHDERR_TIMEOUT; }
 
-        bool success = tx_loop_processing(tx_tech_stream, *slot, shared_resources);
+        bool success = tx_loop_processing(tx_tech_stream, *slot, processor, shared_resources);
         shared_resources.synchronization.notify_processing_finished();
         if (!success)
             return false;
@@ -290,7 +297,7 @@ bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Deltacast::SharedR
     return true;
 }
 
-bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Deltacast::SharedResources& shared_resources)
+bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Processor processor, Deltacast::SharedResources& shared_resources)
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
 
@@ -310,7 +317,7 @@ bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& s
 
     auto& [ buffer, buffer_size ] = slot.video().buffer();
 
-    generate_frame(shared_resources.buffer, shared_resources.buffer_size, buffer, buffer_size);
+    processor(shared_resources.buffer, shared_resources.buffer_size, buffer, buffer_size);
 
     return true;
 }

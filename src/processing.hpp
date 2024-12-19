@@ -16,6 +16,9 @@
 #pragma once
 
 #include <cstdint>
+#include <functional>
+
+using Processor = std::function<void(const uint8_t*, uint32_t, uint8_t*, uint32_t)>;
 
 void generate_overlay(const uint8_t* buffer, uint32_t buffer_size, uint8_t* overlay_buffer, uint32_t overlay_buffer_size);
 void generate_frame(const uint8_t* buffer, uint32_t buffer_size, uint8_t* output_buffer, uint32_t output_buffer_size);

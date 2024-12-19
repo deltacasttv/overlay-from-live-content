@@ -31,8 +31,13 @@ namespace Application::Helper
 
     VHD_STREAMTYPE rx_index_to_streamtype(unsigned int rx_index);
     VHD_STREAMTYPE tx_index_to_streamtype(unsigned int tx_index);
+    
+    VHD_KEYERINPUT rx_to_keyer_input(unsigned int rx_index);
+    VHD_KEYERINPUT tx_to_keyer_input(unsigned int tx_index);
+    VHD_KEYEROUTPUT rx_to_keyer_output(unsigned int rx_index);
 
     bool wait_for_input(Deltacast::Wrapper::BoardComponents::RxConnector& rx_connector, const std::atomic_bool& stop_is_requested);
+    bool wait_for_genlock(Deltacast::Wrapper::BoardComponents::SdiComponents::Genlock& genlock, const std::atomic_bool& stop_is_requested);
 
     using TechStream = std::variant<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::DvStream>;
     TechStream open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type);

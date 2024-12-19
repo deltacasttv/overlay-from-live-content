@@ -116,6 +116,45 @@ namespace Application::Helper
         }
     }
 
+    VHD_KEYERINPUT rx_to_keyer_input(unsigned int rx_index)
+    {
+        switch (rx_index)
+        {
+        case 0: return VHD_KINPUT_RX0;
+        case 1: return VHD_KINPUT_RX1;
+        case 2: return VHD_KINPUT_RX2;
+        case 3: return VHD_KINPUT_RX3;
+        default:
+            throw std::invalid_argument("Invalid RX index");
+        }
+    }
+
+    VHD_KEYERINPUT tx_to_keyer_input(unsigned int tx_index)
+    {
+        switch (tx_index)
+        {
+        case 0: return VHD_KINPUT_TX0;
+        case 1: return VHD_KINPUT_TX1;
+        case 2: return VHD_KINPUT_TX2;
+        case 3: return VHD_KINPUT_TX3;
+        default:
+            throw std::invalid_argument("Invalid TX index");
+        }
+    }
+
+    VHD_KEYEROUTPUT rx_to_keyer_output(unsigned int rx_index)
+    {
+        switch (rx_index)
+        {
+        case 0: return VHD_KOUTPUT_RX0;
+        case 1: return VHD_KOUTPUT_RX1;
+        case 2: return VHD_KOUTPUT_RX2;
+        case 3: return VHD_KOUTPUT_RX3;
+        default:
+            throw std::invalid_argument("Invalid RX index");
+        }
+    }
+
     VHD_CHANNELTYPE stream_type_to_channel_type(Board& board, VHD_STREAMTYPE stream_type)
     {
         switch (stream_type)
@@ -155,6 +194,14 @@ namespace Application::Helper
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         return rx_connector.signal_present();
+    }
+
+    bool wait_for_genlock(Deltacast::Wrapper::BoardComponents::SdiComponents::Genlock& genlock, const std::atomic_bool& stop_is_requested)
+    {
+        while (!stop_is_requested && !genlock.locked())
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        return genlock.locked();
     }
 
     TechStream open_stream(Board& board, VHD_STREAMTYPE stream_type)
