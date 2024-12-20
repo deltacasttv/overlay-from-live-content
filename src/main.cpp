@@ -295,6 +295,20 @@ std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> configure_tx_stream(
     return tx_application_buffers;
 }
 
+void check_for_drops(const Deltacast::Wrapper::StreamComponents::BufferQueue& buffer_queue, std::optional<unsigned int>& previous_slots_dropped, std::string name)
+{
+    unsigned int slots_count = buffer_queue.slots_count(), slots_dropped = buffer_queue.slots_dropped();
+
+    if (!previous_slots_dropped.has_value())
+        previous_slots_dropped = slots_dropped;
+
+    if (previous_slots_dropped != slots_dropped)
+    {
+        std::cout << "INFO for " << name << ": Dropped occurred: slots count=" << slots_count << ", slots dropped=" << slots_dropped << std::endl;
+        previous_slots_dropped = slots_dropped;
+    }
+}
+
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources)
 {
     auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
@@ -305,6 +319,8 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
         std::cerr << e.logs() << std::endl;
         return false;
     }
+
+    std::optional<unsigned int> previous_slots_dropped = std::nullopt;
 
     while (!shared_resources.synchronization.stop_is_requested
         && !shared_resources.synchronization.incoming_signal_changed)
@@ -327,21 +343,8 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
                 && !shared_resources.synchronization.wait_until_processed()) {}
         }
         
-        // if (!shared_resources.synchronization.stop_is_requested)
-        // {
-        //     ULONG slots_count = 0, slots_dropped = 0;
-        //     VHD_GetStreamProperty(*handle(), VHD_CORE_SP_SLOTS_COUNT, &slots_count);
-        //     VHD_GetStreamProperty(*handle(), VHD_CORE_SP_SLOTS_DROPPED, &slots_dropped);
-
-        //     if (!_slots_dropped.has_value())
-        //         _slots_dropped = slots_dropped;
-
-        //     if (_slots_dropped != slots_dropped)
-        //     {
-        //         std::cout << "INFO for " << _name << ": Dropped occurred: slots count=" << slots_count << ", slots dropped=" << slots_dropped << std::endl;
-        //         _slots_dropped = slots_dropped;
-        //     }
-        // }
+        if (!shared_resources.synchronization.stop_is_requested)
+            check_for_drops(rx_stream.buffer_queue(), previous_slots_dropped, "RX");
     }
     
     return true;
@@ -362,6 +365,8 @@ bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& 
 
     Application::Helper::disable_loopback(board, tx_stream.index(tx_stream.type()));
 
+    std::optional<unsigned int> previous_slots_dropped = std::nullopt;
+
     while (!shared_resources.synchronization.stop_is_requested
         && !shared_resources.synchronization.incoming_signal_changed)
     {
@@ -374,21 +379,8 @@ bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& 
         if (!success)
             return false;
 
-        // if (!shared_resources.synchronization.stop_is_requested)
-        // {
-        //     ULONG slots_count = 0, slots_dropped = 0;
-        //     VHD_GetStreamProperty(*handle(), VHD_CORE_SP_SLOTS_COUNT, &slots_count);
-        //     VHD_GetStreamProperty(*handle(), VHD_CORE_SP_SLOTS_DROPPED, &slots_dropped);
-
-        //     if (!_slots_dropped.has_value())
-        //         _slots_dropped = slots_dropped;
-
-        //     if (_slots_dropped != slots_dropped)
-        //     {
-        //         std::cout << "INFO for " << _name << ": Dropped occurred: slots count=" << slots_count << ", slots dropped=" << slots_dropped << std::endl;
-        //         _slots_dropped = slots_dropped;
-        //     }
-        // }
+        if (!shared_resources.synchronization.stop_is_requested)
+            check_for_drops(tx_stream.buffer_queue(), previous_slots_dropped, "TX");
     }
 
     return true;
