@@ -43,7 +43,7 @@ void on_close(int /*signal*/)
 }
 
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources);
-bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources);
+bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources);
 
 int main(int argc, char** argv)
 {
@@ -87,8 +87,6 @@ int main(int argc, char** argv)
         //     std::cout << "ERROR: Device is not suitable for running this application" << std::endl;
         //     return -1;
         // }
-
-        Application::Helper::disable_loopback(board, rx_stream_id);
 
         while (!shared_resources.synchronization.stop_is_requested)
         {
@@ -167,7 +165,7 @@ int main(int argc, char** argv)
                 std::get<SdiStream>(tx_tech_stream).genlock().enable();
             Application::Helper::configure_stream(tx_tech_stream, signal_information);
             std::cout << "Starting TX stream..." << std::endl;
-            std::thread tx_thread(tx_loop, std::ref(tx_tech_stream), (overlay_enabled ? Application::Processing::overlay : Application::Processing::non_overlay), std::ref(shared_resources));
+            std::thread tx_thread(tx_loop, std::ref(board), std::ref(tx_tech_stream), (overlay_enabled ? Application::Processing::overlay : Application::Processing::non_overlay), std::ref(shared_resources));
 
             if (renderer_enabled)
             {
@@ -218,7 +216,13 @@ int main(int argc, char** argv)
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources)
 {
     auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
-    rx_stream.start();
+    try { rx_stream.start(); }
+    catch(const ApiException& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << e.logs() << std::endl;
+        return false;
+    }
 
     while (!shared_resources.synchronization.stop_is_requested
         && !shared_resources.synchronization.incoming_signal_changed)
@@ -228,7 +232,7 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
             do
             {
                 try { slot = rx_stream.pop_slot(); }
-                catch(const ApiException& e) { return e.error_code() == VHDERR_TIMEOUT; }
+                catch(const ApiException& e) { std::cout << e.what() << std::endl; if (e.error_code() == VHDERR_TIMEOUT) continue; else return false; }
             } while (rx_stream.buffer_queue().filling() > 0);
 
             auto& [ buffer, buffer_size ] = slot->video().buffer();
@@ -263,17 +267,25 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
 
 bool tx_loop_processing(Application::Helper::TechStream& tx_tech_stream, Slot& slot, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources);
 
-bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources)
+bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources)
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
-    tx_stream.start();
+    try { tx_stream.start(); }
+    catch(const ApiException& e)
+    {
+        std::cerr << e.what() << std::endl;
+        std::cerr << e.logs() << std::endl;
+        return false;
+    }
+
+    Application::Helper::disable_loopback(board, tx_stream.index(tx_stream.type()));
 
     while (!shared_resources.synchronization.stop_is_requested
         && !shared_resources.synchronization.incoming_signal_changed)
     {
         std::unique_ptr<Slot> slot = nullptr;
         try { slot = tx_stream.pop_slot(); }
-        catch(const ApiException& e) { return e.error_code() == VHDERR_TIMEOUT; }
+        catch(const ApiException& e) { std::cout << e.what() << std::endl; if (e.error_code() == VHDERR_TIMEOUT) continue; else return false; }
 
         bool success = tx_loop_processing(tx_tech_stream, *slot, processor, shared_resources);
         shared_resources.synchronization.notify_processing_finished();
@@ -296,7 +308,7 @@ bool tx_loop(Application::Helper::TechStream& tx_tech_stream, Application::Proce
         //     }
         // }
     }
-    
+
     return true;
 }
 

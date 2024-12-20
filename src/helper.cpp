@@ -246,6 +246,8 @@ namespace Application::Helper
                 dv_signal_information.progressive ? dv_stream.set_progressive() : dv_stream.set_interlaced();
                 dv_stream.set_frame_rate(dv_signal_information.framerate);
                 dv_stream.set_cable_color_space(dv_signal_information.cable_color_space);
+                if (dv_stream.is_tx(dv_stream.type()))
+                    dv_stream.set_cable_sampling(dv_signal_information.cable_sampling);
             }
         }, stream);
     }
