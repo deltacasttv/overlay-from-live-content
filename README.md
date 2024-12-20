@@ -2,7 +2,7 @@
 
 The application demonstrates an overlay use case built on any keyer-enable DELTACAST device where the overlay is computed from the live content fed on one of its input connectors.
 
-An SDI and keyer-enable device is currently the only valid type of device for this application.
+An SDI or DV keyer-enable device is currently the only valid type of devices for this application.
 
 The actual processing that is implemented in the demo application is quite straightforward.
 In this case, it consists in overlaying the bottom half of the input frame onto the live content so that the top half is the live content while the bottom half is delayed by the processing.
@@ -14,63 +14,53 @@ OS Support:
 
 See https://www.deltacast.tv for more video products.
 
-## How to build
+# How to build
+
+As some dependencies are retrieved through submodules, you will need to initialize them:
+
+    git submodule update --init --recursive
 
 VideoViewer requires some dependencies to be installed on the system:
-- cmake v3.19 or higher
-- glfw v3.3.6
-- Python 3
 
-### Retrieve dependencies with Conan (optional)
+    cmake v3.20 or higher
+    glfw v3.4.0
+    Python 3
 
-To use Conan 1.x to retrieve the dependencies, create the `modules`` directory and use the install command:
+We recommend using Conan 2.x to retrieve those dependencies:
 
-```shell
-mkdir /path/to/modules
-cd /path/to/modules
-conan install /path/to/video-viewer -b missing -g cmake_find_package
-```
+    conan install . -b missing -pr YOUR_CONAN_PROFILE
 
-### VideoMaster SDK
+## VideoMaster SDK
 
-The VideoMaster SDK is required to build the application.
+The VideoMaster SDK (version >= 6.26) is required to build the application.
 
-#### Windows
+After installing the SDK according to the official documentation, the libs and headers should be found without further step needed through the `find_package` command.
 
-After installing the SDK according to the official documentation, you shall place the `Include` and `Library` folders in a new folder `deps/VideoMaster`.
-
-#### Linux
-
-After installing the SDK according to the official documentation, the libs and headers should be found without further steps needed.
-
-### Building with CMake
+# Building with CMake
 
 If you used Conan to retrieve your dependencies, you can use the following commands to build the project:
 
-```shell
-cd /path/to/video-viewer
-cmake -S . -B build -DCMAKE_MODULE_PATH:PATH=/path/to/modules
-cmake --build build
-```
+    cmake --preset YOUR_CMAKE_PRESET
+    cmake --build build
 
-## How to use
+# How to use
 
 All relevant information regarding the application can be found by running the application with the `--help` option:
 
 ```shell
-./OverlayFromLiveContent --help
+./videomaster-overlay-from-live-content --help
 ```
 
 For example, to run the application with the default settings, simply run:
 
 ```shell
-./OverlayFromLiveContent
+./videomaster-overlay-from-live-content
 ```
 
 Activating the rendering of the live content on the screen and the handling of the keyer can be done with the following command:
 
 ```shell
-./OverlayFromLiveContent --renderer --overlay
+./videomaster-overlay-from-live-content --renderer --overlay
 ```
 
 ## How to customize
