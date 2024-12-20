@@ -229,6 +229,14 @@ namespace Application::Helper
         }, stream);
     }
 
+    unsigned int number_of_buffer_types(TechStream& stream)
+    {
+        return std::visit(overloaded{
+            [](SdiStream& sdi_stream) -> unsigned int { return NB_VHD_SDI_BUFFERTYPE; },
+            [](DvStream& dv_stream) -> unsigned int { return NB_VHD_DV_BUFFERTYPE; }
+        }, stream);
+    }
+
     void configure_stream(TechStream& stream, const SignalInformation& signal_information)
     {
         std::visit(overloaded{

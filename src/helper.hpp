@@ -42,6 +42,7 @@ namespace Application::Helper
     using TechStream = std::variant<Deltacast::Wrapper::SdiStream, Deltacast::Wrapper::DvStream>;
     TechStream open_stream(Deltacast::Wrapper::Board& board, VHD_STREAMTYPE stream_type);
     Deltacast::Wrapper::Stream& to_base_stream(TechStream& stream);
+    unsigned int number_of_buffer_types(TechStream& stream);
 
     struct SdiSignalInformation
     {

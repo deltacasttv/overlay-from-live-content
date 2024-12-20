@@ -45,6 +45,11 @@ void on_close(int /*signal*/)
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources);
 bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& tx_tech_stream, Application::Processing::Processor processor, Deltacast::SharedResources& shared_resources);
 
+void configure_genlock(Deltacast::Wrapper::BoardComponents::SdiComponents::Genlock& genlock, const Application::Helper::SdiSignalInformation& sdi_signal_info);
+void configure_keyer(Deltacast::Wrapper::BoardComponents::Keyer& keyer, unsigned int rx_stream_id, unsigned int tx_stream_id);
+std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> configure_rx_stream(Application::Helper::TechStream& rx_tech_stream, const Application::Helper::SignalInformation& signal_information, unsigned int number_of_slots);
+std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> configure_tx_stream(Application::Helper::TechStream& tx_tech_stream, const Application::Helper::SignalInformation& signal_information, bool overlay_enabled, unsigned int number_of_slots);
+
 int main(int argc, char** argv)
 {
     CLI::App app{"Generates some content from input and sends it to output"};
@@ -61,6 +66,8 @@ int main(int argc, char** argv)
     shared_resources.maximum_latency = 2;
     app.add_option("-l,--maximum-latency", shared_resources.maximum_latency, "Maximum desired latency in frames between input and output");
     CLI11_PARSE(app, argc, argv);
+
+    const unsigned int number_of_slots = 16;
 
     signal(SIGINT, on_close);
 
@@ -122,11 +129,8 @@ int main(int argc, char** argv)
 
             if (board.has_sdi() && board.rx(rx_stream_id).has_sdi())
             {
-                const auto& sdi_signal_info = std::get<Application::Helper::SdiSignalInformation>(signal_information);
                 std::cout << "Configuring genlock..." << std::endl;
-                board.sdi().genlock(0).set_source(VHD_GENLOCK_RX0);
-                board.sdi().genlock(0).set_clock_divisor(sdi_signal_info.clock_divisor);
-                board.sdi().genlock(0).set_video_standard(sdi_signal_info.video_standard);
+                configure_genlock(board.sdi().genlock(0), std::get<Application::Helper::SdiSignalInformation>(signal_information));
                 std::cout << "Waiting for genlock locked..." << std::endl;
                 Application::Helper::wait_for_genlock(board.sdi().genlock(0), shared_resources.synchronization.stop_is_requested);
             }
@@ -135,14 +139,7 @@ int main(int argc, char** argv)
             if (overlay_enabled)
             {
                 std::cout << "Configuring keyer..." << std::endl;
-                board.keyer(tx_stream_id).set_input_a(Application::Helper::rx_to_keyer_input(rx_stream_id));
-                board.keyer(tx_stream_id).set_input_b(Application::Helper::tx_to_keyer_input(tx_stream_id));
-                board.keyer(tx_stream_id).set_input_k(Application::Helper::tx_to_keyer_input(tx_stream_id));
-                board.keyer(tx_stream_id).set_video_output(VHD_KOUTPUT_KEYER);
-                board.keyer(tx_stream_id).set_alpha_clip_min_value(0);
-                board.keyer(tx_stream_id).set_alpha_clip_max_value(1020);
-                board.keyer(tx_stream_id).set_alpha_blend_factor(1023);
-                board.keyer(tx_stream_id).enable();
+                configure_keyer(board.keyer(tx_stream_id), rx_stream_id, tx_stream_id);
             }
 
             std::cout << "Opening TX" << tx_stream_id << " stream..." << std::endl;
@@ -150,20 +147,12 @@ int main(int argc, char** argv)
             auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
                         
             std::cout << "Configuring RX stream..." << std::endl;
-            rx_stream.buffer_queue().set_depth(16);
-            rx_stream.buffer_queue().set_transfer_scheme(VHD_TRANSFER_UNCONSTRAINED);
-            rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_RGB_24);
-            Application::Helper::configure_stream(rx_tech_stream, signal_information);
+            auto rx_application_buffers = configure_rx_stream(rx_tech_stream, signal_information, number_of_slots);
             std::cout << "Starting RX stream..." << std::endl;
             std::thread rx_thread(rx_loop, std::ref(rx_tech_stream), std::ref(shared_resources));
 
             std::cout << "Configuring TX stream..." << std::endl;
-            tx_stream.buffer_queue().set_depth(16);
-            tx_stream.buffer_queue().set_preload(0);
-            tx_stream.set_buffer_packing(overlay_enabled ? VHD_BUFPACK_VIDEO_RGBA_32 : VHD_BUFPACK_VIDEO_RGB_24);
-            if (std::holds_alternative<SdiStream>(tx_tech_stream))
-                std::get<SdiStream>(tx_tech_stream).genlock().enable();
-            Application::Helper::configure_stream(tx_tech_stream, signal_information);
+            auto tx_application_buffers = configure_tx_stream(tx_tech_stream, signal_information, overlay_enabled, number_of_slots);
             std::cout << "Starting TX stream..." << std::endl;
             std::thread tx_thread(tx_loop, std::ref(board), std::ref(tx_tech_stream), (overlay_enabled ? Application::Processing::overlay : Application::Processing::non_overlay), std::ref(shared_resources));
 
@@ -202,6 +191,14 @@ int main(int argc, char** argv)
 
             rx_thread.join();
             tx_thread.join();
+            
+            for (auto& slot_buffers : rx_application_buffers)
+                for (auto& buffer_descriptor : slot_buffers)
+                    Application::Allocation::deallocate_buffer(buffer_descriptor);
+
+            for (auto& slot_buffers : tx_application_buffers)
+                for (auto& buffer_descriptor : slot_buffers)
+                    Application::Allocation::deallocate_buffer(buffer_descriptor);
         }
     }
     catch (const ApiException& e)
@@ -211,6 +208,91 @@ int main(int argc, char** argv)
     }
 
     return 0;
+}
+
+void configure_genlock(Deltacast::Wrapper::BoardComponents::SdiComponents::Genlock& genlock, const Application::Helper::SdiSignalInformation& sdi_signal_info)
+{
+    genlock.set_source(VHD_GENLOCK_RX0);
+    genlock.set_clock_divisor(sdi_signal_info.clock_divisor);
+    genlock.set_video_standard(sdi_signal_info.video_standard);
+}
+
+void configure_keyer(Deltacast::Wrapper::BoardComponents::Keyer& keyer, unsigned int rx_stream_id, unsigned int tx_stream_id)
+{
+    keyer.set_input_a(Application::Helper::rx_to_keyer_input(rx_stream_id));
+    keyer.set_input_b(Application::Helper::tx_to_keyer_input(tx_stream_id));
+    keyer.set_input_k(Application::Helper::tx_to_keyer_input(tx_stream_id));
+    keyer.set_video_output(VHD_KOUTPUT_KEYER);
+    keyer.set_alpha_clip_min_value(0);
+    keyer.set_alpha_clip_max_value(1020);
+    keyer.set_alpha_blend_factor(1023);
+    keyer.enable();
+}
+
+std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> create_application_buffers(const StreamComponents::ApplicationBufferManager& application_buffer_manager
+                                                                                        , unsigned int number_of_slots
+                                                                                        , unsigned int number_of_buffer_types)
+{
+    std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> application_buffers;
+
+    for (unsigned int slot = 0; slot < number_of_slots; slot++)
+    {
+        std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR> slot_buffers;
+        for (unsigned int buffer_type = 0; buffer_type < number_of_buffer_types; buffer_type++)
+        {
+            VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor;
+            buffer_descriptor.Size = sizeof(VHD_APPLICATION_BUFFER_DESCRIPTOR);
+            buffer_descriptor.pBuffer = nullptr;
+            buffer_descriptor.RDMAEnabled = false;
+
+            auto buffer_size = application_buffer_manager.buffer_size(buffer_type);
+            if (buffer_size)
+                buffer_descriptor = Application::Allocation::allocate_buffer(buffer_size);
+
+            slot_buffers.push_back(buffer_descriptor);
+        }
+        application_buffers.push_back(slot_buffers);
+    }
+
+    return application_buffers;
+}
+
+std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> configure_rx_stream(Application::Helper::TechStream& rx_tech_stream, const Application::Helper::SignalInformation& signal_information, unsigned int number_of_slots)
+{
+    auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
+
+    rx_stream.buffer_queue().set_transfer_scheme(VHD_TRANSFER_UNCONSTRAINED);
+    rx_stream.set_buffer_packing(VHD_BUFPACK_VIDEO_RGB_24);
+    Application::Helper::configure_stream(rx_tech_stream, signal_information);
+
+    rx_stream.enable_application_buffers();
+    auto& rx_application_buffer_manager = rx_stream.application_buffer_manager();
+
+    auto rx_application_buffers = create_application_buffers(rx_application_buffer_manager, number_of_slots, Application::Helper::number_of_buffer_types(rx_tech_stream));
+    for (const auto& slot_buffers : rx_application_buffers)
+        rx_application_buffer_manager.add_slot(slot_buffers);
+
+    return rx_application_buffers;
+}
+
+std::vector<std::vector<VHD_APPLICATION_BUFFER_DESCRIPTOR>> configure_tx_stream(Application::Helper::TechStream& tx_tech_stream, const Application::Helper::SignalInformation& signal_information, bool overlay_enabled, unsigned int number_of_slots)
+{
+    auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
+
+    tx_stream.buffer_queue().set_preload(0);
+    tx_stream.set_buffer_packing(overlay_enabled ? VHD_BUFPACK_VIDEO_RGBA_32 : VHD_BUFPACK_VIDEO_RGB_24);
+    if (std::holds_alternative<SdiStream>(tx_tech_stream))
+        std::get<SdiStream>(tx_tech_stream).genlock().enable();
+    Application::Helper::configure_stream(tx_tech_stream, signal_information);
+
+    tx_stream.enable_application_buffers();
+    auto& tx_application_buffer_manager = tx_stream.application_buffer_manager();
+
+    auto tx_application_buffers = create_application_buffers(tx_application_buffer_manager, number_of_slots, Application::Helper::number_of_buffer_types(tx_tech_stream));
+    for (const auto& slot_buffers : tx_application_buffers)
+        tx_application_buffer_manager.add_slot(slot_buffers);
+
+    return tx_application_buffers;
 }
 
 bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedResources& shared_resources)
