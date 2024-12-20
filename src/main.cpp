@@ -82,11 +82,11 @@ int main(int argc, char** argv)
 
         std::cout << board << std::endl;
 
-        // if (!device->suitable())
-        // {
-        //     std::cout << "ERROR: Device is not suitable for running this application" << std::endl;
-        //     return -1;
-        // }
+        if (!board.has_keyer(tx_stream_id))
+        {
+            std::cerr << "Output connector " << tx_stream_id << " does not support keying" << std::endl;
+            return -1;
+        }
 
         while (!shared_resources.synchronization.stop_is_requested)
         {
