@@ -53,11 +53,11 @@ void configure_tx_stream(Application::Helper::TechStream& tx_tech_stream, const 
 int main(int argc, char** argv)
 {
     CLI::App app{"Generates some content from input and sends it to output"};
-    int device_id = 0;
+    unsigned int device_id = 0;
     app.add_option("-d,--device", device_id, "ID of the device to use");
-    int rx_stream_id = 0;
+    unsigned int rx_stream_id = 0;
     app.add_option("-i,--input", rx_stream_id, "ID of the input connector to use");
-    int tx_stream_id = 0;
+    unsigned int tx_stream_id = 0;
     app.add_option("-o,--output", tx_stream_id, "ID of the output connector to use");
     bool overlay_enabled = false;
     app.add_flag("--overlay,!--no-overlay", overlay_enabled, "Activates overlay on the output stream");
@@ -260,7 +260,7 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
 {
     auto& rx_stream = Application::Helper::to_base_stream(rx_tech_stream);
     try { rx_stream.start(); }
-    catch(const ApiException& e)
+    catch (const ApiException& e)
     {
         std::cerr << e.what() << std::endl;
         std::cerr << e.logs() << std::endl;
@@ -303,7 +303,7 @@ bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& 
 {
     auto& tx_stream = Application::Helper::to_base_stream(tx_tech_stream);
     try { tx_stream.start(); }
-    catch(const ApiException& e)
+    catch (const ApiException& e)
     {
         std::cerr << e.what() << std::endl;
         std::cerr << e.logs() << std::endl;
