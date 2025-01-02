@@ -249,10 +249,7 @@ namespace Application::Helper
             [&signal_information](DvStream& dv_stream)
             {
                 const DvSignalInformation& dv_signal_information = std::get<DvSignalInformation>(signal_information);
-                dv_stream.set_active_width(dv_signal_information.width);
-                dv_stream.set_active_height(dv_signal_information.height);
-                dv_signal_information.progressive ? dv_stream.set_progressive() : dv_stream.set_interlaced();
-                dv_stream.set_frame_rate(dv_signal_information.framerate);
+                dv_stream.set_properties_from(VHD_DV_STD_SMPTE, dv_signal_information.width, dv_signal_information.height, dv_signal_information.framerate, !dv_signal_information.progressive);
                 dv_stream.set_cable_color_space(dv_signal_information.cable_color_space);
                 if (dv_stream.is_tx(dv_stream.type()))
                     dv_stream.set_cable_sampling(dv_signal_information.cable_sampling);
