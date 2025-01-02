@@ -1,3 +1,15 @@
+# Unreleased
+
+# Added
+
+- Support for HDMI/DisplayPort input and output
+
+# Changed
+
+- Handling of dependencies with Conan and submodules
+- Handling of VideoMaster API, now using the official C++ API
+- Application name is now `videomaster-overlay-from-live-content`
+
 # 1.0.2
 
 ## Added

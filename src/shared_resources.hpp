@@ -23,8 +23,6 @@
 
 #include "VideoMasterHD_Core.h"
 
-#include "signal_information.hpp"
-
 namespace Deltacast
 {
     struct SharedResources
@@ -33,7 +31,7 @@ namespace Deltacast
         {
         public:
             std::atomic_bool stop_is_requested = false;
-            std::atomic_bool signal_has_changed = false;
+            std::atomic_bool incoming_signal_changed = false;
 
             bool wait_until_ready_to_process();
             void notify_processing_finished();
@@ -52,8 +50,6 @@ namespace Deltacast
 
         UBYTE* buffer = nullptr;
         ULONG buffer_size = 0;
-
-        SignalInformation signal_info;
 
         unsigned int maximum_latency;
 

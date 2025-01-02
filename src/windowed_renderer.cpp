@@ -13,32 +13,36 @@
  * limitations under the License.
  */
 
-#include "rx_renderer.hpp"
+#include "windowed_renderer.hpp"
 
 #include <iostream>
 #include <cstring>
 
-RxRenderer::RxRenderer(std::string window_title, int window_width, int window_height, int framerate_ms)
+WindowedRenderer::WindowedRenderer(std::string window_title, int window_width, int window_height, int framerate_ms, std::atomic_bool& stop_is_requested)
     : _window_title(window_title)
     , _window_width(window_width)
     , _window_height(window_height)
     , _framerate_ms(framerate_ms)
+    , _should_stop(stop_is_requested)
+    , _monitor_ready(false)
 {
 }
 
-RxRenderer::~RxRenderer()
+WindowedRenderer::~WindowedRenderer()
 {
     stop();
 }
 
-bool RxRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool WindowedRenderer::init(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
 {
-    _monitor_thread = std::thread(&RxRenderer::monitor, this, image_width, image_height, input_format);
+    _monitor_thread = std::thread(&WindowedRenderer::monitor, this, image_width, image_height, input_format);
+    while (!_monitor_ready)
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     return true;
 }
 
-bool RxRenderer::monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
+bool WindowedRenderer::monitor(int image_width, int image_height, Deltacast::VideoViewer::InputFormat input_format)
 {
     if (!_monitor.init(_window_width, _window_height, _window_title.c_str(), image_width, image_height, input_format))
     {
@@ -46,20 +50,21 @@ bool RxRenderer::monitor(int image_width, int image_height, Deltacast::VideoView
         return false;
     }
 
+    _monitor_ready = true;
     _monitor.render_loop(_framerate_ms);
     _monitor.release();
 
     return true;
 }
 
-bool RxRenderer::start(Deltacast::SharedResources& shared_resources)
+bool WindowedRenderer::start(Deltacast::SharedResources& shared_resources)
 {
-    _rendering_loop_thread = std::thread(&RxRenderer::render_loop, this, std::ref(shared_resources));
+    _rendering_loop_thread = std::thread(&WindowedRenderer::render_loop, this, std::ref(shared_resources));
 
     return true;
 }
 
-bool RxRenderer::stop()
+bool WindowedRenderer::stop()
 {
     _should_stop = true;
     if (_rendering_loop_thread.joinable())
@@ -67,12 +72,15 @@ bool RxRenderer::stop()
 
     _monitor.stop();
     if (_monitor_thread.joinable())
+    {
         _monitor_thread.join();
+        _monitor_ready = false;
+    }
 
     return true;
 }
 
-void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
+void WindowedRenderer::render_loop(Deltacast::SharedResources& shared_resources)
 {
     std::unique_ptr<uint8_t> to_render_data = nullptr;
     uint64_t to_render_data_size = 0;
@@ -102,6 +110,10 @@ void RxRenderer::render_loop(Deltacast::SharedResources& shared_resources)
                 memcpy(monitor_data, to_render_data.get(), monitor_data_size);
 
             _monitor.unlock_data();
+        }
+        else // windows has probaly been closed
+        {
+            _should_stop = true; 
         }
     }
 }

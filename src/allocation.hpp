@@ -18,5 +18,8 @@
 #include "VideoMasterHD_Core.h"
 #include "VideoMasterHD_ApplicationBuffers.h"
 
-VHD_APPLICATION_BUFFER_DESCRIPTOR allocate_buffer(ULONG buffer_size);
-void deallocate_buffer(VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor);
+namespace Application::Allocation
+{
+    VHD_APPLICATION_BUFFER_DESCRIPTOR allocate_buffer(ULONG buffer_size);
+    void deallocate_buffer(VHD_APPLICATION_BUFFER_DESCRIPTOR buffer_descriptor);
+}
