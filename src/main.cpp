@@ -141,6 +141,8 @@ int main(int argc, char** argv)
                 std::cout << "Configuring keyer..." << std::endl;
                 configure_keyer(board.keyer(tx_stream_id), rx_stream_id, tx_stream_id);
             }
+            else
+                board.keyer(tx_stream_id).disable();
 
             std::cout << "Opening TX" << tx_stream_id << " stream..." << std::endl;
             auto tx_tech_stream = Application::Helper::open_stream(board, Application::Helper::tx_index_to_streamtype(tx_stream_id));
@@ -277,7 +279,7 @@ bool rx_loop(Application::Helper::TechStream& rx_tech_stream, Deltacast::SharedR
             do
             {
                 try { slot = rx_stream.pop_slot(); }
-                catch(const ApiException& e) { std::cout << e.what() << std::endl; if (e.error_code() == VHDERR_TIMEOUT) continue; else return false; }
+                catch (const ApiException& e) { std::cout << "RX: " << e.what() << std::endl; if (e.error_code() == VHDERR_TIMEOUT) continue; else return false; }
             } while (rx_stream.buffer_queue().filling() > 0);
 
             auto& [ buffer, buffer_size ] = slot->video().buffer();
@@ -319,7 +321,7 @@ bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& 
     {
         std::unique_ptr<Slot> slot = nullptr;
         try { slot = tx_stream.pop_slot(); }
-        catch(const ApiException& e) { std::cout << e.what() << std::endl; if (e.error_code() == VHDERR_TIMEOUT) continue; else return false; }
+        catch (const ApiException& e) { std::cout << "TX: " << e.what() << std::endl; if (e.error_code() == VHDERR_TIMEOUT) continue; else return false; }
 
         bool success = tx_loop_processing(tx_tech_stream, *slot, processor, shared_resources);
         shared_resources.synchronization.notify_processing_finished();
