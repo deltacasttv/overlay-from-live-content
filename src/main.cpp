@@ -193,6 +193,8 @@ int main(int argc, char** argv)
 
             rx_thread.join();
             tx_thread.join();
+
+            Application::Helper::enable_loopback(board, rx_stream_id);
         }
     }
     catch (const ApiException& e)
@@ -312,8 +314,6 @@ bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& 
         return false;
     }
 
-    Application::Helper::disable_loopback(board, tx_stream.index(tx_stream.type()));
-
     std::optional<unsigned int> previous_slots_dropped = std::nullopt;
 
     while (!shared_resources.synchronization.stop_is_requested
@@ -329,7 +329,11 @@ bool tx_loop(Deltacast::Wrapper::Board& board, Application::Helper::TechStream& 
             return false;
 
         if (!shared_resources.synchronization.stop_is_requested)
+        {
+            if (!previous_slots_dropped.has_value())
+                Application::Helper::disable_loopback(board, tx_stream.index(tx_stream.type()));
             check_for_drops(tx_stream.buffer_queue(), previous_slots_dropped, "TX");
+        }
     }
 
     return true;
