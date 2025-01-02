@@ -1,10 +1,12 @@
 # Unreleased
 
-# Added
+# 2.0.0
+
+## Added
 
 - Support for HDMI/DisplayPort input and output
 
-# Changed
+## Changed
 
 - Handling of dependencies with Conan and submodules
 - Handling of VideoMaster API, now using the official C++ API
